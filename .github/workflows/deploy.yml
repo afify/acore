@@ -1,0 +1,55 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup SSH Key for EC2 only
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Deploy to EC2
+      run: |
+        ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          set -e
+
+          cd /home/admin || {
+            echo "Parent directory missing!";
+            exit 1;
+          }
+
+          if [ ! -d "acore" ]; then
+            echo "Cloning project..."
+            git clone git@github.com:afify/acore.git acore
+          fi
+
+          cd acore
+
+          echo "Pulling latest code..."
+          git pull origin main
+
+          if [ ! -f ".env" ]; then
+            echo ".env not found. Copying from .env.example..."
+            cp .env.example .env
+          fi
+
+          echo "Running make to start containers..."
+          make
+
+          echo "Running Migrations"
+          make migrate
+
+          echo "Deployment complete!"
+        EOF

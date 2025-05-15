@@ -1,0 +1,15 @@
+apiVersion: 1
+
+datasources:
+  - name: Acore Redis
+    type: redis-datasource
+    access: proxy
+    url: "${REDIS_HOST}:${REDIS_CONTAINER_PORT}"
+    jsonData:
+      defaultDatabase: 0
+      tls: false
+      useACL: false
+      sentinelUrls: []
+      sentinelName: ""
+    secureJsonData:
+      password: "${REDIS_PASSWORD}"
