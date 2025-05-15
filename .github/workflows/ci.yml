@@ -15,24 +15,10 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Prepare .env
-        run: |
-          if [ -f .env.example ]; then
-            cp .env.example .env
-          fi
-
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.23'
 
-      - name: Cache Go modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-
-      - name: Build Docker images
-        run: make build-images
+      - name: Build
+        run: go build ./...
