@@ -9,8 +9,6 @@ import (
 )
 
 type PageData struct {
-	Color  string // will be "blue" or "green"
-	Commit string // short SHA
 }
 
 func HeartBeat(w http.ResponseWriter, r *http.Request) {
@@ -19,8 +17,9 @@ func HeartBeat(w http.ResponseWriter, r *http.Request) {
 }
 
 type LandingView struct {
-	Error string
-	// TODO: add more fields here as you need them
+	Error     string
+	Container string
+	Commit    string
 }
 
 func showLanding(w http.ResponseWriter, v LandingView, code int) {
@@ -33,5 +32,12 @@ func showLanding(w http.ResponseWriter, v LandingView, code int) {
 }
 
 func Home(w http.ResponseWriter, r *http.Request) {
-	showLanding(w, LandingView{}, http.StatusOK)
+	container := os.Getenv("APP_NAME")
+	commit := os.Getenv("COMMIT")
+	showLanding(w, LandingView{
+		Error:     "",
+		Container: container,
+		Commit:    commit,
+	}, http.StatusOK)
+
 }
