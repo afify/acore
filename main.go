@@ -4,8 +4,10 @@ import (
 	"log/slog"
 	"net/http"
 
-	"acore/database"
+	"acore/database/pg"
+	"acore/database/redis"
 	"acore/middleware"
+	"acore/render"
 	"acore/routes"
 
 	"github.com/joho/godotenv"
@@ -20,11 +22,12 @@ func init() {
 }
 
 func main() {
-	database.InitRedis()
-	database.InitDB()
-	defer database.CloseDB()
+	redis.InitRedis()
+	pg.InitDB()
+	defer pg.CloseDB()
 
 	mux := routes.SetupRoutes()
+	render.InitTemplates()
 	handler := middleware.LoggingMiddleware(mux)
 
 	slog.Info("server starting", "port", 8080)

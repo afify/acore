@@ -1,45 +1,29 @@
 package routes
 
 import (
-	"acore/controllers"
-	"acore/middleware"
-	"log"
 	"net/http"
-	"os"
-	"text/template"
-)
 
-type PageData struct {
-	Color  string // will be "blue" or "green"
-	Commit string // short SHA
-}
+	"acore/controllers/auth"
+	"acore/controllers/landing"
+	"acore/controllers/user"
+	mw "acore/middleware"
+)
 
 func SetupRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
-	data := PageData{
-		Color:  os.Getenv("DEPLOY_COLOR"), // set this in your docker-compose for each service
-		Commit: os.Getenv("COMMIT"),       // your short SHA exported from Makefile
-	}
 
-	indexTmpl := template.Must(template.ParseFiles("templates/index.html"))
+	mux.HandleFunc("GET /", landing.Home)
+	mux.HandleFunc("GET /ping", landing.HeartBeat)
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
-			return
-		}
-		if err := indexTmpl.Execute(w, data); err != nil {
-			log.Printf("template execute error: %v", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-		}
-	})
+	// Public Only
+	mux.Handle("POST /login", mw.PublicOnly(http.HandlerFunc(auth.SignInForm)))
+	mux.Handle("GET /login", mw.PublicOnly(http.HandlerFunc(auth.SignInPage)))
+	mux.Handle("POST /signup", mw.PublicOnly(http.HandlerFunc(auth.SignUpForm)))
+	mux.Handle("GET /signup", mw.PublicOnly(http.HandlerFunc(auth.SignUpPage)))
 
-	// Public routes
-	mux.HandleFunc("/ping", controllers.HeartBeat)
-	mux.HandleFunc("/login", controllers.LoginUser)
-	mux.HandleFunc("/users", controllers.HandleUsers)
-
-	mux.Handle("/user/{id}", middleware.AuthMiddleware(http.HandlerFunc(controllers.HandleUsers)))
+	// Private Only
+	mux.Handle("GET /home", mw.AuthRequired(http.HandlerFunc(user.UserHome)))
+	//mux.Handle("GET /profile", mw.PublicOnly(http.HandlerFunc(user.UserProfile)))
 
 	return mux
 }

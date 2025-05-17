@@ -52,7 +52,6 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 			"status", rl.status,
 			"duration_ms", time.Since(start).Milliseconds(),
 			"request_body", string(reqBody),
-			"response_body", rl.body.String(),
 		)
 	})
 }

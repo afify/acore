@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <title>{{ if .Code }}Error {{ .Code }}{{ else }}Something went wrong{{ end }}</title>
+</head>
+<body class="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-lg max-w-md w-full text-center p-8">
+    <div class="mb-6">
+      <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-16 w-16 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07" />
+      </svg>
+    </div>
+    <h1 class="text-4xl font-extrabold text-gray-800 mb-4">
+      {{ if .Code }}Error {{ .Code }}{{ else }}Oops!{{ end }}
+    </h1>
+    {{ if .Error }}
+      <p class="text-lg text-gray-600 mb-6">{{ .Error }}</p>
+    {{ else }}
+      <p class="text-lg text-gray-600 mb-6">
+        Sorry, we couldn’t load that page. Please try again later.
+      </p>
+    {{ end }}
+    <a href="/" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition">
+      Return Home
+    </a>
+  </div>
+</body>
+</html>

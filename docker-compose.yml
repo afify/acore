@@ -189,6 +189,12 @@ services:
       - "-database"
       - "${PG_URL}"
       - "up"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:${TRAEFIK_DASHBOARD_PORT}/ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
     networks:
       - acore_net
     restart: "no"

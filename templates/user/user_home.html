@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard – {{.Username}}</title>
+  <style>
+    body { margin:0; font-family:sans-serif; display:flex; height:100vh; }
+    .sidebar { width:200px; background:#333; color:#fff; padding:20px; }
+    .sidebar a { color:#fff; text-decoration:none; display:block; margin:10px 0; }
+    .main { flex-grow:1; display:flex; flex-direction:column; }
+    .topbar { height:50px; background:#f4f4f4; padding:0 20px; display:flex; align-items:center; }
+    .content { flex-grow:1; padding:20px; background:#fafafa; }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>YourApp</h2>
+    <a href="/home">Dashboard</a>
+    <a href="/profile">Profile</a>
+    <a href="/logout">Logout</a>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      Welcome, {{.Username}}
+    </div>
+    <div class="content">
+      <h1>Hello, {{.Username}}!</h1>
+      <p>This is your dashboard.</p>
+    </div>
+  </div>
+</body>
+</html>

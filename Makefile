@@ -9,7 +9,7 @@ all: deploy
 
 ensure-infra:
 	@printf "\033[35m*** Ensuring infra services are running…\033[0m\n"
-	@for svc in acore-postgres acore-redis acore-traefik acore-grafana; do \
+	@for svc in acore-postgres acore-redis acore-migrate acore-traefik acore-grafana; do \
 		status=$$(docker inspect -f '{{.State.Running}}' $$svc 2>/dev/null || echo false); \
 		if [ "$$status" != "true" ]; then \
 			printf "\033[33m*** Starting $$svc…\033[0m\n"; \
@@ -45,7 +45,7 @@ deploy: ensure-infra
 	@printf "\033[35m*** Cleaning up old acore images…\033[0m\n"
 	@docker images "${APP_NAME}" --format "{{.ID}}" | xargs -r docker rmi 2>/dev/null || true
 
-migrate:
+migrate: ensure-infra
 	@printf "\033[35m*** Running migrations…\033[0m\n"
 	docker compose run --rm acore-migrate \
 		-path /migrations -database "${PG_URL}" up
@@ -61,6 +61,13 @@ migrate-new:
 		file="database/migrations/$${timestamp}_$${snake}.up.sql"; \
 		touch "$$file"; \
 	printf "\033[35m*** Created %s\033[0m\n" "$$file"
+
+migrate-reset: ensure-infra
+	@printf "\033[35m*** Resetting public schema…\033[0m\n"
+	docker compose exec -T acore-postgres \
+		psql -U ${PG_USER} -d ${PG_NAME} \
+		-v ON_ERROR_STOP=1 \
+		-c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 
 clean-all:
 	@printf "\033[35m*** Stopping all containers…\033[0m\n"
