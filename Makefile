@@ -24,26 +24,31 @@ reload-infra:
 
 # Blue/Green deploy: ensure infra → start green → stop blue → rebuild blue → stop green → bring green back
 deploy: ensure-infra
-	@printf "\033[35m*** Stopping blue (traffic → green)…\033[0m\n"
+	@printf "\033[35m*** Starting green (new version)…\033[0m\n"
+	docker compose up -d --build --no-deps acore-green
+
+	@printf "\033[35m*** Waiting for green to be healthy…\033[0m\n"
+	until [ "$$(docker inspect -f '{{.State.Health.Status}}' acore-green)" = "healthy" ]; do sleep 1; done
+
+	@printf "\033[35m*** Stopping blue…\033[0m\n"
 	docker compose stop acore-blue
 
-	@printf "\033[35m*** Rebuilding & starting blue…\033[0m\n"
+	@printf "\033[35m*** Rebuilding blue…\033[0m\n"
 	docker compose build acore-blue
-	docker compose up -d --build --no-deps acore-blue
+
+	@printf "\033[35m*** Starting blue…\033[0m\n"
+	docker compose start acore-blue
 
 	@printf "\033[35m*** Waiting for blue to be healthy…\033[0m\n"
 	until [ "$$(docker inspect -f '{{.State.Health.Status}}' acore-blue)" = "healthy" ]; do sleep 1; done
 
-	@printf "\033[35m*** Stopping green (traffic → blue)…\033[0m\n"
+	@printf "\033[35m*** Stopping green…\033[0m\n"
 	docker compose stop acore-green
 
-	@printf "\033[35m*** Restarting green (both up)…\033[0m\n"
-	docker compose up -d --build --no-deps acore-green
+	@printf "\033[35m*** Building green for next cycle…\033[0m\n"
+	docker compose build acore-green
 
-	@printf "\033[35m*** Done — Blue & Green both healthy. \033[0m\n"
-
-	@printf "\033[35m*** Cleaning up old acore images…\033[0m\n"
-	@docker images "${APP_NAME}" --format "{{.ID}}" | xargs -r docker rmi 2>/dev/null || true
+	@printf "\033[35m*** Done — no overlap, one container active at each step.\033[0m\n"
 
 migrate: ensure-infra
 	@printf "\033[35m*** Running migrations…\033[0m\n"
