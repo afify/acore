@@ -33,8 +33,8 @@ deploy: ensure-infra
 	@printf "\033[35m*** Stopping blue…\033[0m\n"
 	docker compose stop acore-blue
 
-	@printf "\033[35m*** Rebuilding blue…\033[0m\n"
-	docker compose build acore-blue
+	@printf "\033[35m*** Building blue (new version)…\033[0m\n"
+	docker compose up -d --build --no-deps acore-blue
 
 	@printf "\033[35m*** Starting blue…\033[0m\n"
 	docker compose start acore-blue
