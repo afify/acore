@@ -59,12 +59,13 @@ services:
       - "traefik.enable=true"
       # staging on HTTP
       - "traefik.http.routers.${APP_NAME}-staging.rule=Host(`${APP_DOMAIN_STAGING}`)"
-      - "traefik.http.routers.${APP_NAME}-staging.entrypoints=web"
+      - "traefik.http.routers.${APP_NAME}-staging.entrypoints=websecure"
+      - "traefik.http.routers.${APP_NAME}-staging.tls=true"
       # production on HTTPS
       - "traefik.http.routers.${APP_NAME}-prod.rule=Host(`${APP_DOMAIN_PROD}`)"
       - "traefik.http.routers.${APP_NAME}-prod.entrypoints=websecure"
       - "traefik.http.routers.${APP_NAME}-prod.tls=true"
-      - "traefik.http.routers.${APP_NAME}-prod.tls.certresolver=le"
+      - ${APP_TLS_CERTRESOLVER_LABEL}
       # common service settings
       - "traefik.http.services.${APP_NAME}.loadbalancer.server.port=${APP_CONTAINER_PORT}"
       - "traefik.http.services.${APP_NAME}.loadbalancer.healthcheck.path=${APP_HEALTHCHECK_PATH}"
@@ -95,13 +96,13 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      # keep same router definitions so blue/green-deploy can toggle enable flag
       - "traefik.http.routers.${APP_NAME}-staging.rule=Host(`${APP_DOMAIN_STAGING}`)"
-      - "traefik.http.routers.${APP_NAME}-staging.entrypoints=web"
+      - "traefik.http.routers.${APP_NAME}-staging.entrypoints=websecure"
+      - "traefik.http.routers.${APP_NAME}-staging.tls=true"
       - "traefik.http.routers.${APP_NAME}-prod.rule=Host(`${APP_DOMAIN_PROD}`)"
       - "traefik.http.routers.${APP_NAME}-prod.entrypoints=websecure"
       - "traefik.http.routers.${APP_NAME}-prod.tls=true"
-      - "traefik.http.routers.${APP_NAME}-prod.tls.certresolver=le"
+      - ${APP_TLS_CERTRESOLVER_LABEL}
       - "traefik.http.services.${APP_NAME}.loadbalancer.server.port=${APP_CONTAINER_PORT}"
       - "traefik.http.services.${APP_NAME}.loadbalancer.healthcheck.path=${APP_HEALTHCHECK_PATH}"
     healthcheck:
@@ -118,25 +119,25 @@ services:
     container_name: acore-traefik
     restart: unless-stopped
     env_file: .env
-    command:
-      - "--log.level=DEBUG"
-      - "--api.dashboard=true"
-      - "--api.insecure=false"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.traefik.address=:${TRAEFIK_DASHBOARD_PORT}"
-      - "--entrypoints.web.address=:${TRAEFIK_HTTP_CONTAINER_PORT}"
-      - "--entrypoints.websecure.address=:${TRAEFIK_HTTPS_CONTAINER_PORT}"
-      - "--certificatesresolvers.le.acme.email=${TRAEFIK_EMAIL}"
-      - "--certificatesresolvers.le.acme.storage=/acme/acme.json"
-      - "--certificatesresolvers.le.acme.httpchallenge=true"
-      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+    command: >
+      traefik
+      --log.level=DEBUG
+      --api.dashboard=true
+      --api.insecure=${TRAEFIK_API_INSECURE}
+      --providers.docker=true
+      --providers.docker.exposedbydefault=false
+      --entrypoints.traefik.address=:${TRAEFIK_DASHBOARD_PORT}
+      --entrypoints.web.address=:${TRAEFIK_HTTP_CONTAINER_PORT}
+      --entrypoints.websecure.address=:${TRAEFIK_HTTPS_CONTAINER_PORT}
+      ${TRAEFIK_CERTIFICATES_RESOLVER}
+      ${TRAEFIK_FILE_PROVIDER}
     ports:
       - "${TRAEFIK_HTTP_HOST_PORT}:${TRAEFIK_HTTP_CONTAINER_PORT}"
       - "${TRAEFIK_HTTPS_HOST_PORT}:${TRAEFIK_HTTPS_CONTAINER_PORT}"
       - "${TRAEFIK_DASHBOARD_PORT}:${TRAEFIK_DASHBOARD_PORT}"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./certs:/certs"
       - acme:/acme
     depends_on:
       acore-redis:

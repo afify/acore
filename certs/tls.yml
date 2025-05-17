@@ -1,0 +1,9 @@
+tls:
+  stores:
+    default: {}
+
+  certificates:
+    - certFile: "/certs/dev.acore.com.crt"
+      keyFile: "/certs/dev.acore.com.key"
+      stores:
+        - default
