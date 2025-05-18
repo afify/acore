@@ -1,13 +1,14 @@
 package pg
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v5"
 )
 
 var DB *sql.DB
@@ -17,29 +18,28 @@ func InitDB() {
 
 	user := os.Getenv("PG_USER")
 	password := os.Getenv("PG_PASSWORD")
-	name := os.Getenv("PG_NAME")
+	dbName := os.Getenv("PG_NAME")
 	host := os.Getenv("PG_HOST")
 	port := os.Getenv("PG_CONT_PORT")
+	sslMode := os.Getenv("PG_SSL_MODE")
 
-	if user == "" ||
-		password == "" ||
-		name == "" ||
-		host == "" ||
-		port == "" {
+	if user == "" || password == "" || dbName == "" || host == "" ||
+		sslMode == "" || port == "" {
 		log.Fatal("All database environment variables are required")
 	}
 
-	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s sslmode=disable",
-		user, password, name, host, port)
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		user, password, host, port, dbName, sslMode,
+	)
 
-	DB, err = sql.Open("postgres", connStr)
+	DB, err := pgx.Connect(context.Background(), connStr)
 	if err != nil {
 		log.Printf("Failed to connect to database: %v", err)
 	}
 
 	deadline := time.Now().Add(30 * time.Second)
 	for {
-		if err := DB.Ping(); err == nil {
+		if err := DB.Ping(context.Background()); err == nil {
 			break
 		} else if time.Now().After(deadline) {
 			log.Fatalf("Timed out waiting for Postgres: %v", err)

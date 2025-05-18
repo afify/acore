@@ -48,6 +48,7 @@ services:
       - APP_NAME=${APP_NAME}-blue
       - COMMIT=${COMMIT}
       - DEPLOY_COLOR=blue
+      - PG_URL="${PG_URL}"
     ports:
       - "${APP_BLUE_HOST_PORT}:${APP_CONTAINER_PORT}"
     depends_on:
@@ -87,6 +88,7 @@ services:
       - APP_NAME=${APP_NAME}-green
       - COMMIT=${COMMIT}
       - DEPLOY_COLOR=green
+      - PG_URL="${PG_URL}"
     ports:
       - "${APP_GREEN_HOST_PORT}:${APP_CONTAINER_PORT}"
     depends_on:

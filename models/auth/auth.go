@@ -19,8 +19,8 @@ type ChangePassReq struct {
 }
 
 type SignInReq struct {
-	EmailUsername string `form:"email-username"`
-	Password      string `form:"password" binding:"required"`
+	EmailUsername string `form:"email-username" binding:"required"`
+	Password      string `form:"password"       binding:"required"`
 }
 
 type ForgetReq struct {

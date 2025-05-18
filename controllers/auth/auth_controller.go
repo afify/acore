@@ -97,17 +97,20 @@ func SignUpForm(w http.ResponseWriter, r *http.Request) {
 func SignInForm(w http.ResponseWriter, r *http.Request) {
 	form, err := bindSignIn(r)
 	if err != nil {
+		slog.Error("SignInForm failed", "error", err)
 		showSignIn(w, form, "Invalid form submission", http.StatusBadRequest)
 		return
 	}
 
 	userID, err := auth.Authenticate(form)
 	if err != nil {
+		slog.Error("SignInForm Authenticate failed", "error", err)
 		showSignIn(w, form, "Wrong email/username or password", http.StatusUnauthorized)
 		return
 	}
 
 	if err := session.CreateSession(w, r, userID); err != nil {
+		slog.Error("SignInForm Session failed", "error", err)
 		showSignIn(w, form, "Could not create session", http.StatusInternalServerError)
 		return
 	}
