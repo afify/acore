@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard – {{.Username}}</title>
+  <title>Dashboard – {{.User.Username}}</title>
   <style>
     body { margin:0; font-family:sans-serif; display:flex; height:100vh; }
     .sidebar { width:200px; background:#333; color:#fff; padding:20px; }
@@ -21,10 +21,10 @@
   </div>
   <div class="main">
     <div class="topbar">
-      Welcome, {{.Username}}
+      Welcome, {{.User.Username}}
     </div>
     <div class="content">
-      <h1>Hello, {{.Username}}!</h1>
+      <h1>Hello, {{.User.Username}}!</h1>
       <p>This is your dashboard.</p>
     </div>
   </div>

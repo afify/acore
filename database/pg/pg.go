@@ -2,20 +2,18 @@ package pg
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
-	"log"
 	"os"
 	"time"
+
+	"log/slog"
 
 	"github.com/jackc/pgx/v5"
 )
 
-var DB *sql.DB
+var DB *pgx.Conn
 
 func InitDB() {
-	var err error
-
 	user := os.Getenv("PG_USER")
 	password := os.Getenv("PG_PASSWORD")
 	dbName := os.Getenv("PG_NAME")
@@ -25,38 +23,40 @@ func InitDB() {
 
 	if user == "" || password == "" || dbName == "" || host == "" ||
 		sslMode == "" || port == "" {
-		log.Fatal("All database environment variables are required")
+		slog.Error("All database environment variables are required")
+		os.Exit(1)
 	}
 
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		user, password, host, port, dbName, sslMode,
 	)
 
-	DB, err := pgx.Connect(context.Background(), connStr)
+	var err error
+	DB, err = pgx.Connect(context.Background(), connStr)
 	if err != nil {
-		log.Printf("Failed to connect to database: %v", err)
+		slog.Error("Failed to connect to database", slog.Any("error", err))
 	}
 
 	deadline := time.Now().Add(30 * time.Second)
 	for {
-		if err := DB.Ping(context.Background()); err == nil {
+		if err = DB.Ping(context.Background()); err == nil {
 			break
 		} else if time.Now().After(deadline) {
-			log.Fatalf("Timed out waiting for Postgres: %v", err)
+			slog.Error("Timed out waiting for Postgres", slog.Any("error", err))
+			os.Exit(1)
 		} else {
-			log.Printf("Waiting for Postgres… %v", err)
+			slog.Info("Waiting for Postgres…", slog.Any("error", err))
 			time.Sleep(2 * time.Second)
 		}
 	}
-	log.Println("[2] Connected to PostgreSQL")
 
+	slog.Info("[2] Connected to PostgreSQL")
 }
 
 func CloseDB() {
 	if DB != nil {
-		err := DB.Close()
-		if err != nil {
-			log.Printf("Failed to close database connection: %v", err)
+		if err := DB.Close(context.Background()); err != nil {
+			slog.Error("Failed to close database connection", slog.Any("error", err))
 		}
 	}
 }

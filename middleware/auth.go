@@ -1,72 +1,57 @@
-// middleware/auth.go
 package middleware
 
 import (
-	"acore/database/redis"
 	"log/slog"
 	"net/http"
-	"time"
+
+	"acore/models/session"
 )
 
 const (
 	sessionCookieName = "session_token"
-	sessionTTL        = 24 * time.Hour
 	userIDHeader      = "X-User-ID"
 )
 
 func AuthRequired(next http.Handler) http.Handler {
 	slog.Info("AuthRequired")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token, err := readSessionToken(r)
-		if err != nil {
-			redirectLogin(w, r)
+		slog.Info("AuthRequired: incoming request",
+			slog.String("path", r.URL.Path),
+		)
+
+		// 1) read cookie
+		c, err := r.Cookie(sessionCookieName)
+		if err != nil || c.Value == "" {
+			session.RedirectLogin(w, r)
 			return
 		}
 
-		userID, err := checkRedis(token)
+		// 2) verify token (decrypt & check expiry)
+		userID, err := session.VerifySessionToken(c.Value)
 		if err != nil {
-			redirectLogin(w, r)
+			session.RedirectLogin(w, r)
 			return
 		}
 
-		_ = refreshTTL(token, userID)
+		// 3) inject userID and proceed
 		r.Header.Set(userIDHeader, userID)
-		slog.Info("Setting user id to header")
-
+		slog.Info("Session valid, setting user ID header", slog.String("userID", userID))
 		next.ServeHTTP(w, r)
 	})
 }
 
 func PublicOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, err := readSessionToken(r); err == nil {
-			http.Redirect(w, r, "/home", http.StatusTemporaryRedirect)
-			return
+		slog.Info("PublicOnly: incoming request",
+			slog.String("path", r.URL.Path),
+		)
+		if c, err := r.Cookie(sessionCookieName); err == nil && c.Value != "" {
+			if userID, err := session.VerifySessionToken(c.Value); err == nil {
+				slog.Info("PublicOnly: already logged in", slog.String("userID", userID))
+				session.RedirectUserHome(w, r)
+				return
+			}
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-func readSessionToken(r *http.Request) (string, error) {
-	slog.Info("Reading Cookie")
-	c, err := r.Cookie(sessionCookieName)
-	if err != nil || c.Value == "" {
-		slog.Info("No Cookie Found")
-		return "", err
-	}
-	return c.Value, nil
-}
-
-func checkRedis(token string) (string, error) {
-	slog.Info("Checking redis")
-	return redis.GetRedis(token)
-}
-
-func refreshTTL(token, userID string) error {
-	return redis.SetRedis(token, userID, sessionTTL)
-}
-
-func redirectLogin(w http.ResponseWriter, r *http.Request) {
-	slog.Info("Redirect to login")
-	http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 }

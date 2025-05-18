@@ -3,10 +3,11 @@ package main
 import (
 	"log/slog"
 	"net/http"
+	"os"
 
 	"acore/database/pg"
 	"acore/database/redis"
-	"acore/middleware"
+	"acore/logger"
 	"acore/render"
 	"acore/routes"
 
@@ -18,7 +19,7 @@ func init() {
 	if err != nil {
 		slog.Info("No .env file found")
 	}
-	slog.Info("[0] Logger initialized.")
+	logger.Init()
 }
 
 func main() {
@@ -28,8 +29,8 @@ func main() {
 
 	mux := routes.SetupRoutes()
 	render.InitTemplates()
-	handler := middleware.LoggingMiddleware(mux)
 
-	slog.Info("server starting", "port", 8080)
-	http.ListenAndServe(":8080", handler)
+	slog.Info("server starting",
+		slog.String("port", os.Getenv("APP_CONTAINER_PORT")))
+	http.ListenAndServe(":8080", mux)
 }
