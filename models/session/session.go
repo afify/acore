@@ -18,7 +18,10 @@ type Session struct {
 	ExpiresAt    time.Time
 }
 
-const sessionCookieName string = "Session_$"
+const (
+	CookieName   string = "Session_$"
+	UserIDHeader string = "X-User-ID"
+)
 
 func CreateSession(w http.ResponseWriter, r *http.Request, userID string) error {
 	sess, err := newSession(userID, r.RemoteAddr, r.UserAgent())
@@ -64,7 +67,7 @@ func newSession(userID, ipAddress, userAgent string) (*Session, error) {
 func setSessionCookie(w http.ResponseWriter, token string, expires time.Time) {
 	slog.Info("setting session cookie")
 	http.SetCookie(w, &http.Cookie{
-		Name:     sessionCookieName,
+		Name:     CookieName,
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
@@ -77,7 +80,7 @@ func setSessionCookie(w http.ResponseWriter, token string, expires time.Time) {
 func clearSessionCookie(w http.ResponseWriter) {
 	slog.Info("Clear session cookie")
 	http.SetCookie(w, &http.Cookie{
-		Name:     sessionCookieName,
+		Name:     CookieName,
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,

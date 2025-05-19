@@ -24,7 +24,7 @@ func renderUserHome(w http.ResponseWriter, hv UserHomeView, code int) {
 }
 
 func UserHome(w http.ResponseWriter, r *http.Request) {
-	userID := r.Header.Get("X-User-ID")
+	userID := r.Header.Get(session.UserIDHeader)
 	if userID == "" {
 		session.RedirectLogin(w, r)
 		return
@@ -32,11 +32,7 @@ func UserHome(w http.ResponseWriter, r *http.Request) {
 
 	u, err := modelUser.GetByID(userID)
 	if err != nil {
-		renderUserHome(w,
-			UserHomeView{
-				Error: "Unable to load user",
-			},
-			http.StatusInternalServerError)
+		session.RedirectLogin(w, r)
 		return
 	}
 
