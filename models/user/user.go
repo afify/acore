@@ -19,21 +19,19 @@ type User struct {
 }
 
 func GetByEmail(email string) (*User, error) {
-	var u User
-	slog.Info("GetByEmail")
-	if err := db.CallFunc(&u, "get_user_by_email", email); err != nil {
-		slog.Error("GetByID", slog.Any("error", err))
-		return nil, fmt.Errorf("user.GetByEmail: %w", err)
+	u, err := db.CallFuncSingle[User]("get_user_by_email", email)
+	if err != nil {
+		slog.Error("GetByEmail", "error", err)
+		return nil, fmt.Errorf("user.GetByID: %w", err)
 	}
-	return &u, nil
+	return u, nil
 }
 
 func GetByID(id string) (*User, error) {
-	var u User
-	slog.Info("GetByID")
-	if err := db.CallFunc(&u, "get_user_by_id", id); err != nil {
-		slog.Error("GetByID", slog.Any("error", err))
+	u, err := db.CallFuncSingle[User]("get_user_by_id", id)
+	if err != nil {
+		slog.Error("GetByID", "error", err)
 		return nil, fmt.Errorf("user.GetByID: %w", err)
 	}
-	return &u, nil
+	return u, nil
 }

@@ -3,46 +3,71 @@ package db
 import (
 	"context"
 	"fmt"
-	"log/slog"
+	"reflect"
 	"strings"
-	"time"
 
 	"acore/database/pg"
+
+	"github.com/jackc/pgx/v5"
 )
 
-func CallFunc(out interface{}, fnName string, args ...interface{}) error {
-	start := time.Now()
-
-	slog.Info("DB call start",
-		slog.String("fn", fnName),
-		slog.Int("args", len(args)),
-	)
+func buildQuery(fnName string, param interface{}) (sql string, args []interface{}) {
+	v := reflect.ValueOf(param)
+	if v.Kind() == reflect.Struct {
+		t := v.Type()
+		for i := 0; i < t.NumField(); i++ {
+			f := t.Field(i)
+			if f.PkgPath == "" { // exported
+				args = append(args, v.Field(i).Interface())
+			}
+		}
+	} else {
+		args = []interface{}{param}
+	}
 
 	ph := make([]string, len(args))
-	for i := range args {
+	for i := range ph {
 		ph[i] = fmt.Sprintf("$%d", i+1)
 	}
-	query := fmt.Sprintf("SELECT %s(%s)", fnName, strings.Join(ph, ","))
+	return fmt.Sprintf("SELECT * FROM %s(%s)", fnName, strings.Join(ph, ",")), args
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+// func CallFunc[T any](fnName string, param interface{}, mode CallMode) (interface{}, error) {
+// 	switch mode {
+// 	case ModeSingle:
+// 		return CallFuncSingle[T](fnName, param)
+// 	case ModeMulti:
+// 		return CallFuncMulti[T](fnName, param)
+// 	default:
+// 		return nil, fmt.Errorf("invalid CallMode %d", mode)
+// 	}
+// }
 
-	err := pg.DB.QueryRow(ctx, query, args...).Scan(out)
+func CallFuncMulti[T any](fnName string, param interface{}) ([]T, error) {
+	sql, args := buildQuery(fnName, param)
+
+	rows, err := pg.DB.Query(context.Background(), sql, args...)
 	if err != nil {
-		slog.Error("DB call end",
-			slog.String("fn", fnName),
-			slog.Int("args", len(args)),
-			slog.Duration("duration", time.Since(start)),
-			slog.Any("error", err),
-		)
-		return err
+		return nil, err
 	}
+	defer rows.Close()
 
-	slog.Info("DB call end",
-		slog.String("fn", fnName),
-		slog.Int("args", len(args)),
-		slog.Duration("duration", time.Since(start)),
-	)
+	return pgx.CollectRows(rows, pgx.RowToStructByName[T])
+}
 
-	return nil
+// CallFuncSingle invokes the Postgres function fnName(param) and returns exactly one *T.
+func CallFuncSingle[T any](fnName string, param interface{}) (*T, error) {
+	sql, args := buildQuery(fnName, param)
+
+	rows, err := pg.DB.Query(context.Background(), sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	item, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[T])
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
 }

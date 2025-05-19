@@ -7,61 +7,59 @@ import (
 	"time"
 
 	"acore/database/db"
+
+	"github.com/google/uuid"
 )
 
 type Session struct {
-	ID           string
-	UserID       string
-	IPAddress    string
-	UserAgent    string
-	SessionToken string
-	ExpiresAt    time.Time
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	IPAddress string
+	UserAgent string
+	Token     string
+	ExpiresAt time.Time
 }
 
 const (
-	CookieName   string = "Session_$"
+	CookieName   string = "Acore-Session"
 	UserIDHeader string = "X-User-ID"
 )
 
-func CreateSession(w http.ResponseWriter, r *http.Request, userID string) error {
+func CreateSession(w http.ResponseWriter, r *http.Request, userID uuid.UUID) error {
 	sess, err := newSession(userID, r.RemoteAddr, r.UserAgent())
 	if err != nil {
 		return fmt.Errorf("CreateSession: %w", err)
 	}
-	setSessionCookie(w, sess.SessionToken, sess.ExpiresAt)
+	setSessionCookie(w, sess.Token, sess.ExpiresAt)
 	return nil
 }
 
-func newSession(userID, ipAddress, userAgent string) (*Session, error) {
-	var sessionId string
-
+func newSession(userID uuid.UUID, ipAddress, userAgent string) (*Session, error) {
 	token, err := GenerateSessionToken(userID, 24*time.Hour)
 	if err != nil {
+		slog.Error("newSession", "error", err)
 		return nil, fmt.Errorf("newSession(token): %w", err)
 	}
 	expires := time.Now().Add(24 * time.Hour)
 
-	const fn = "public.create_user_session"
-	if err := db.CallFunc(
-		&sessionId,
-		fn,
-		userID,
-		token,
-		ipAddress,
-		userAgent,
-		expires,
-	); err != nil {
+	s := &Session{
+		UserID:    userID,
+		IPAddress: ipAddress,
+		UserAgent: userAgent,
+		Token:     token,
+		ExpiresAt: expires,
+	}
+
+	sessionId, err := db.CallFuncSingle[uuid.UUID]("create_user_session", s)
+	if err != nil {
+		slog.Error("newSession", "error", err)
 		return nil, fmt.Errorf("newSession(CallFunc): %w", err)
 	}
 
-	return &Session{
-		ID:           sessionId,
-		UserID:       userID,
-		IPAddress:    ipAddress,
-		UserAgent:    userAgent,
-		SessionToken: token,
-		ExpiresAt:    expires,
-	}, nil
+	s.ID = *sessionId
+
+	slog.Info("newSession", "sessionId", sessionId)
+	return s, nil
 }
 
 func setSessionCookie(w http.ResponseWriter, token string, expires time.Time) {

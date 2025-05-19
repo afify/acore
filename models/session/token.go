@@ -13,15 +13,17 @@ import (
 	"time"
 
 	"log/slog"
+
+	"github.com/google/uuid"
 )
 
 type sessionPayload struct {
-	UserID string `json:"uid"`
-	Exp    int64  `json:"exp"`
-	Nonce  string `json:"n"`
+	UserID uuid.UUID `json:"uid"`
+	Exp    int64     `json:"exp"`
+	Nonce  string    `json:"n"`
 }
 
-func GenerateSessionToken(userID string, ttl time.Duration) (string, error) {
+func GenerateSessionToken(userID uuid.UUID, ttl time.Duration) (string, error) {
 	key := []byte(os.Getenv("SESSION_ENC_KEY"))
 	if len(key) != 32 {
 		slog.Error("GenerateSessionToken: invalid SESSION_ENC_KEY length", "length", len(key))
@@ -80,33 +82,33 @@ func GenerateSessionToken(userID string, ttl time.Duration) (string, error) {
 	return token, nil
 }
 
-func VerifySessionToken(token string) (string, error) {
+func VerifySessionToken(token string) (uuid.UUID, error) {
 	// 1. Load key
 	key := []byte(os.Getenv("SESSION_ENC_KEY"))
 	if len(key) != 32 {
 		slog.Error("VerifySessionToken: invalid SESSION_ENC_KEY length", "length", len(key))
-		return "", errors.New("SESSION_ENC_KEY must be 32 bytes")
+		return uuid.Nil, errors.New("SESSION_ENC_KEY must be 32 bytes")
 	}
 	slog.Info("VerifySessionToken: loaded encryption key", "length", len(key))
 
 	ct, err := base64.URLEncoding.DecodeString(token)
 	if err != nil {
 		slog.Error("VerifySessionToken: failed to decode token", "error", err)
-		return "", fmt.Errorf("VerifySessionToken: decode: %w", err)
+		return uuid.Nil, fmt.Errorf("VerifySessionToken: decode: %w", err)
 	}
 	slog.Info("VerifySessionToken: decoded token", "ciphertext_length", len(ct))
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		slog.Error("VerifySessionToken: aes.NewCipher failed", "error", err)
-		return "", fmt.Errorf("VerifySessionToken: NewCipher: %w", err)
+		return uuid.Nil, fmt.Errorf("VerifySessionToken: NewCipher: %w", err)
 	}
 	slog.Info("VerifySessionToken: created AES cipher block")
 
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
 		slog.Error("VerifySessionToken: cipher.NewGCM failed", "error", err)
-		return "", fmt.Errorf("VerifySessionToken: NewGCM: %w", err)
+		return uuid.Nil, fmt.Errorf("VerifySessionToken: NewGCM: %w", err)
 	}
 	slog.Info("VerifySessionToken: initialized GCM", "nonceSize", gcm.NonceSize())
 
@@ -114,7 +116,7 @@ func VerifySessionToken(token string) (string, error) {
 		slog.Error("VerifySessionToken: ciphertext too short",
 			"length", len(ct), "nonceSize", gcm.NonceSize(),
 		)
-		return "", errors.New("VerifySessionToken: ciphertext too short")
+		return uuid.Nil, errors.New("VerifySessionToken: ciphertext too short")
 	}
 	nonce, ciphertext := ct[:gcm.NonceSize()], ct[gcm.NonceSize():]
 	slog.Info("VerifySessionToken: split nonce and ciphertext", "ciphertext_length", len(ciphertext))
@@ -122,21 +124,21 @@ func VerifySessionToken(token string) (string, error) {
 	plain, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		slog.Error("VerifySessionToken: decryption failed", "error", err)
-		return "", fmt.Errorf("VerifySessionToken: decrypt: %w", err)
+		return uuid.Nil, fmt.Errorf("VerifySessionToken: decrypt: %w", err)
 	}
 	slog.Info("VerifySessionToken: decrypted payload", "plain_length", len(plain))
 
 	var p sessionPayload
 	if err := json.Unmarshal(plain, &p); err != nil {
 		slog.Error("VerifySessionToken: failed to unmarshal payload", "error", err)
-		return "", fmt.Errorf("VerifySessionToken: unmarshal: %w", err)
+		return uuid.Nil, fmt.Errorf("VerifySessionToken: unmarshal: %w", err)
 	}
 	slog.Info("VerifySessionToken: unmarshaled payload", "userID", p.UserID, "exp", p.Exp)
 
 	now := time.Now().Unix()
 	if now > p.Exp {
 		slog.Error("VerifySessionToken: token expired", "exp", p.Exp, "now", now)
-		return "", errors.New("VerifySessionToken: token expired")
+		return uuid.Nil, errors.New("VerifySessionToken: token expired")
 	}
 	slog.Info("VerifySessionToken: session token verified", "userID", p.UserID)
 

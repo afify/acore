@@ -7,11 +7,6 @@ import (
 	"acore/models/session"
 )
 
-const (
-	sessionCookieName = "session_token"
-	userIDHeader      = "X-User-ID"
-)
-
 func AuthRequired(next http.Handler) http.Handler {
 	slog.Info("AuthRequired")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -23,7 +18,7 @@ func AuthRequired(next http.Handler) http.Handler {
 		)
 
 		// 1) read cookie
-		c, err := r.Cookie(sessionCookieName)
+		c, err := r.Cookie(session.CookieName)
 		if err != nil || c.Value == "" {
 			slog.Error("Get Cookie:", "error", err)
 			session.RedirectLogin(w, r)
@@ -39,8 +34,8 @@ func AuthRequired(next http.Handler) http.Handler {
 		}
 
 		// 3) inject userID and proceed
-		r.Header.Set(userIDHeader, userID)
-		slog.Info("Session valid, setting user ID header", slog.String("userID", userID))
+		r.Header.Set(session.UserIDHeader, userID.String())
+		slog.Info("Session valid, setting user ID header", slog.String("userID", userID.String()))
 		next.ServeHTTP(w, r)
 	})
 }
@@ -53,9 +48,9 @@ func PublicOnly(next http.Handler) http.Handler {
 			slog.String("ip", r.RemoteAddr),
 			slog.String("user-agent", r.UserAgent()),
 		)
-		if c, err := r.Cookie(sessionCookieName); err == nil && c.Value != "" {
+		if c, err := r.Cookie(session.CookieName); err == nil && c.Value != "" {
 			if userID, err := session.VerifySessionToken(c.Value); err == nil {
-				slog.Info("PublicOnly: already logged in", slog.String("userID", userID))
+				slog.Info("PublicOnly: already logged in", slog.String("userID", userID.String()))
 				session.RedirectUserHome(w, r)
 				return
 			}

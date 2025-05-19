@@ -91,7 +91,8 @@ func SignUpForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/home", http.StatusSeeOther)
+	return
 }
 
 func SignInForm(w http.ResponseWriter, r *http.Request) {
@@ -114,5 +115,7 @@ func SignInForm(w http.ResponseWriter, r *http.Request) {
 		showSignIn(w, form, "Could not create session", http.StatusInternalServerError)
 		return
 	}
+
 	http.Redirect(w, r, "/home", http.StatusSeeOther)
+	return
 }

@@ -3,7 +3,7 @@ include .env
 COMMIT := $(shell git rev-parse --short HEAD)
 export COMMIT
 
-.PHONY: deploy ensure-infra migrate migrate-new restart-infra clean-all
+.PHONY: deploy ensure-infra migrate restart-infra clean-all
 
 all: deploy
 
@@ -12,7 +12,7 @@ ensure-infra:
 	@for svc in acore-postgres acore-redis acore-migrate acore-traefik acore-grafana; do \
 		status=$$(docker inspect -f '{{.State.Running}}' $$svc 2>/dev/null || echo false); \
 		if [ "$$status" != "true" ]; then \
-			printf "\033[33m*** Starting $$svc…\033[0m\n"; \
+			printf "\033[33m*** Starting %s\033[0m\n" "$$svc"; \
 			docker compose up -d $$svc; \
 		fi; \
 	done
@@ -50,24 +50,41 @@ deploy: ensure-infra
 
 	@printf "\033[35m*** Done — no overlap, one container active at each step.\033[0m\n"
 
-migrate: ensure-infra
+
+migrate: ensure-infra migrate-schema migrate-func
+	@printf "\033[32m*** All migrations complete! 🎉\033[0m\n"
+
+migrate-schema:
 	@printf "\033[35m*** Running migrations…\033[0m\n"
 	docker compose run --rm acore-migrate \
 		-path /migrations -database "${PG_URL}" up
 
+migrate-func:
+	@printf "\033[35m*** Applying SQL functions…\033[0m\n"
+	@for f in database/migrations/functions/*.sql; do \
+		printf "\033[33m*** Applying %s\033[0m\n" "$$f"; \
+		cat "$$f" | docker compose exec -T acore-postgres \
+			psql -U ${PG_USER} -d ${PG_NAME} \
+			-v ON_ERROR_STOP=1; \
+	done
+
 migrate-new:
 	@printf "\033[35m*** Creating a new migration file…\033[0m\n"
 	@read -p "Migration name: " name; \
-		timestamp=$$(date -u +"%Y%m%d%H%M%S"); \
-		snake=$$(echo "$$name" \
-		| tr '[:upper:]' '[:lower:]' \
-		| tr ' ' '_' \
-		| tr -cd 'a-z0-9_-'); \
-		file="database/migrations/$${timestamp}_$${snake}.up.sql"; \
-		touch "$$file"; \
-	printf "\033[35m*** Created %s\033[0m\n" "$$file"
+	timestamp=$$(date -u +"%Y%m%d%H%M%S"); \
+	snake=$$(echo "$$name" \
+	  | tr '[:upper:]' '[:lower:]' \
+	  | tr ' ' '_' \
+	  | tr -cd 'a-z0-9_-'); \
+	dir="database/migrations"; \
+	read -p "Is this a function? (y/N): " isfunc; \
+	[ "$$isfunc" = "y" ] && dir="$$dir/functions"; \
+	mkdir -p "$$dir"; \
+	file="$$dir/$${timestamp}_$${snake}.up.sql"; \
+	touch "$$file"; \
+	printf "\033[32m*** Created %s\033[0m\n" "$$file"
 
-migrate-reset: ensure-infra
+migrate-dropall: ensure-infra
 	@printf "\033[35m*** Resetting public schema…\033[0m\n"
 	docker compose exec -T acore-postgres \
 		psql -U ${PG_USER} -d ${PG_NAME} \
