@@ -12,12 +12,13 @@ import (
 )
 
 type Session struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
-	IPAddress string
-	UserAgent string
-	Token     string
-	ExpiresAt time.Time
+	ID        uuid.UUID `db:"id"`
+	UserID    uuid.UUID `db:"user_id"`
+	Token     string    `db:"session_token"`
+	IPAddress string    `db:"ip_address"`
+	UserAgent string    `db:"user_agent"`
+	CreatedAt time.Time `db:"created_at"`
+	ExpiresAt time.Time `db:"expires_at"`
 }
 
 const (
@@ -40,30 +41,31 @@ func newSession(userID uuid.UUID, ipAddress, userAgent string) (*Session, error)
 		slog.Error("newSession", "error", err)
 		return nil, fmt.Errorf("newSession(token): %w", err)
 	}
-	expires := time.Now().Add(24 * time.Hour)
 
-	s := &Session{
-		UserID:    userID,
-		IPAddress: ipAddress,
-		UserAgent: userAgent,
-		Token:     token,
-		ExpiresAt: expires,
-	}
+	expires := time.Now().Add(240 * time.Hour)
+	slog.Info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+	slog.Info("EXPIRY", "expires", expires)
+	slog.Info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
-	sessionId, err := db.CallFuncSingle[uuid.UUID]("create_user_session", s)
+	session, err := db.CallFuncSingle[Session](db.CallFuncParams{
+		FuncName: "create_user_session",
+		FuncArgs: []interface{}{userID, token, ipAddress, userAgent, expires},
+	})
+
+	slog.Info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+	slog.Info("EXPIRY", "S expires", session.ExpiresAt)
+	slog.Info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 	if err != nil {
 		slog.Error("newSession", "error", err)
 		return nil, fmt.Errorf("newSession(CallFunc): %w", err)
 	}
 
-	s.ID = *sessionId
-
-	slog.Info("newSession", "sessionId", sessionId)
-	return s, nil
+	slog.Info("NewSession", "session", session)
+	return session, nil
 }
 
 func setSessionCookie(w http.ResponseWriter, token string, expires time.Time) {
-	slog.Info("setting session cookie")
+	slog.Info("setting session cookie", "name", CookieName, "token", token, "expires", expires)
 	http.SetCookie(w, &http.Cookie{
 		Name:     CookieName,
 		Value:    token,

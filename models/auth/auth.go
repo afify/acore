@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	user "acore/models/user"
+
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -47,18 +49,25 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 func CreateUser(form SignUpReq) (uuid.UUID, error) {
-	userID, err := db.CallFuncSingle[uuid.UUID]("create_user", form)
+	u, err := db.CallFuncSingle[user.User](db.CallFuncParams{
+		FuncName: "create_user",
+		FuncArgs: []interface{}{form.UserName, form.Email, form.Password},
+	})
 	if err != nil {
 		slog.Error("Create User failed", "error", err)
 		return uuid.Nil, fmt.Errorf("User.Create: %w", err)
 	}
 
-	slog.Info("Create User", "user", userID)
-	return *userID, nil
+	slog.Info("Create User", "user", u)
+	return u.ID, nil
 }
 
 func Authenticate(form SignInReq) (uuid.UUID, error) {
-	uc, err := db.CallFuncSingle[userCred]("get_user_password_hash", form.EmailUsername)
+	uc, err := db.CallFuncSingle[userCred](db.CallFuncParams{
+		FuncName: "get_user_password_hash",
+		FuncArgs: []interface{}{form.EmailUsername},
+	})
+
 	if err != nil {
 		slog.Error("Authenticate failed", "error", err)
 		return uuid.Nil, fmt.Errorf("auth.Authenticate (fetch hash): %w", err)
