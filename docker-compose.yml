@@ -1,3 +1,38 @@
+x-app-default: &app-default
+  build: .
+  image: "${APP_NAME}:latest"
+  env_file: .env
+  environment:
+    - COMMIT=${COMMIT}
+    - PG_URL="${PG_URL}"
+  depends_on:
+    acore-redis:
+      condition: service_healthy
+    acore-postgres:
+      condition: service_healthy
+  labels:
+    - "traefik.enable=true"
+    # local (HTTPS)
+    - "traefik.http.routers.${APP_NAME}-local.rule=Host(`${APP_DOMAIN_DEV}`)"
+    - "traefik.http.routers.${APP_NAME}-local.entrypoints=websecure"
+    - "traefik.http.routers.${APP_NAME}-local.tls=true"
+    # production (HTTPS)
+    - "traefik.http.routers.${APP_NAME}-prod.rule=Host(`${APP_DOMAIN_PROD}`)"
+    - "traefik.http.routers.${APP_NAME}-prod.entrypoints=websecure"
+    - "traefik.http.routers.${APP_NAME}-prod.tls=true"
+    - "${APP_TLS_CERTRESOLVER_LABEL}"
+    # common service settings
+    - "traefik.http.services.${APP_NAME}.loadbalancer.server.port=${APP_CONTAINER_PORT}"
+    - "traefik.http.services.${APP_NAME}.loadbalancer.healthcheck.path=${APP_HEALTHCHECK_PATH}"
+  healthcheck:
+    test: ["CMD", "nc", "-z", "localhost", "${APP_CONTAINER_PORT}"]
+    interval: ${APP_HEALTHCHECK_INTERVAL}
+    timeout: 3s
+    retries: 3
+    start_period: 5s
+  networks:
+    - acore_net
+
 services:
   acore-postgres:
     image: postgres:latest
@@ -40,99 +75,40 @@ services:
       - acore_net
 
   acore-blue:
-    build: .
-    image: "${APP_NAME}:${COMMIT}"
-    env_file: .env
+    <<: *app-default
     container_name: "${APP_NAME}-blue"
     environment:
       - APP_NAME=${APP_NAME}-blue
-      - COMMIT=${COMMIT}
       - DEPLOY_COLOR=blue
-      - PG_URL="${PG_URL}"
     ports:
       - "${APP_BLUE_HOST_PORT}:${APP_CONTAINER_PORT}"
-    depends_on:
-      acore-redis:
-        condition: service_healthy
-      acore-postgres:
-        condition: service_healthy
-    labels:
-      - "traefik.enable=true"
-      # staging on HTTP
-      - "traefik.http.routers.${APP_NAME}-staging.rule=Host(`${APP_DOMAIN_STAGING}`)"
-      - "traefik.http.routers.${APP_NAME}-staging.entrypoints=websecure"
-      - "traefik.http.routers.${APP_NAME}-staging.tls=true"
-      # production on HTTPS
-      - "traefik.http.routers.${APP_NAME}-prod.rule=Host(`${APP_DOMAIN_PROD}`)"
-      - "traefik.http.routers.${APP_NAME}-prod.entrypoints=websecure"
-      - "traefik.http.routers.${APP_NAME}-prod.tls=true"
-      - ${APP_TLS_CERTRESOLVER_LABEL}
-      # common service settings
-      - "traefik.http.services.${APP_NAME}.loadbalancer.server.port=${APP_CONTAINER_PORT}"
-      - "traefik.http.services.${APP_NAME}.loadbalancer.healthcheck.path=${APP_HEALTHCHECK_PATH}"
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "${APP_CONTAINER_PORT}"]
-      interval: ${APP_HEALTHCHECK_INTERVAL}
-      timeout: 3s
-      retries: 3
-      start_period: 5s
-    networks:
-      - acore_net
 
   acore-green:
-    build: .
-    image: "${APP_NAME}:${COMMIT}"
-    env_file: .env
+    <<: *app-default
     container_name: "${APP_NAME}-green"
     environment:
       - APP_NAME=${APP_NAME}-green
-      - COMMIT=${COMMIT}
       - DEPLOY_COLOR=green
-      - PG_URL="${PG_URL}"
     ports:
       - "${APP_GREEN_HOST_PORT}:${APP_CONTAINER_PORT}"
-    depends_on:
-      acore-redis:
-        condition: service_healthy
-      acore-postgres:
-        condition: service_healthy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.${APP_NAME}-staging.rule=Host(`${APP_DOMAIN_STAGING}`)"
-      - "traefik.http.routers.${APP_NAME}-staging.entrypoints=websecure"
-      - "traefik.http.routers.${APP_NAME}-staging.tls=true"
-      - "traefik.http.routers.${APP_NAME}-prod.rule=Host(`${APP_DOMAIN_PROD}`)"
-      - "traefik.http.routers.${APP_NAME}-prod.entrypoints=websecure"
-      - "traefik.http.routers.${APP_NAME}-prod.tls=true"
-      - ${APP_TLS_CERTRESOLVER_LABEL}
-      - "traefik.http.services.${APP_NAME}.loadbalancer.server.port=${APP_CONTAINER_PORT}"
-      - "traefik.http.services.${APP_NAME}.loadbalancer.healthcheck.path=${APP_HEALTHCHECK_PATH}"
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "${APP_CONTAINER_PORT}"]
-      interval: ${APP_HEALTHCHECK_INTERVAL}
-      timeout: 3s
-      retries: 3
-      start_period: 5s
-    networks:
-      - acore_net
 
   acore-traefik:
     image: traefik:latest
     container_name: acore-traefik
     restart: unless-stopped
     env_file: .env
-    command: >
-      traefik
-      --log.level=DEBUG
-      --api.dashboard=true
-      --api.insecure=${TRAEFIK_API_INSECURE}
-      --providers.docker=true
-      --providers.docker.exposedbydefault=false
-      --entrypoints.traefik.address=:${TRAEFIK_DASHBOARD_PORT}
-      --entrypoints.web.address=:${TRAEFIK_HTTP_CONTAINER_PORT}
-      --entrypoints.websecure.address=:${TRAEFIK_HTTPS_CONTAINER_PORT}
-      ${TRAEFIK_CERTIFICATES_RESOLVER}
-      ${TRAEFIK_FILE_PROVIDER}
+    command:
+      - traefik
+      - "--log.level=DEBUG"
+      - "--api.dashboard=true"
+      - "--api.insecure=${TRAEFIK_API_INSECURE}"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.traefik.address=:${TRAEFIK_DASHBOARD_PORT}"
+      - "--entrypoints.web.address=:${TRAEFIK_HTTP_CONTAINER_PORT}"
+      - "--entrypoints.websecure.address=:${TRAEFIK_HTTPS_CONTAINER_PORT}"
+      - ${TRAEFIK_CERTIFICATES_RESOLVER}
+      - ${TRAEFIK_FILE_PROVIDER}
     ports:
       - "${TRAEFIK_HTTP_HOST_PORT}:${TRAEFIK_HTTP_CONTAINER_PORT}"
       - "${TRAEFIK_HTTPS_HOST_PORT}:${TRAEFIK_HTTPS_CONTAINER_PORT}"

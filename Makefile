@@ -3,11 +3,11 @@ include .env
 COMMIT := $(shell git rev-parse --short HEAD)
 export COMMIT
 
-.PHONY: deploy ensure-infra migrate restart-infra clean-all
+.PHONY: deploy infra-ensure infra-reload migrate migrate-new clean-all
 
 all: deploy
 
-ensure-infra:
+infra-ensure:
 	@printf "\033[35m*** Ensuring infra services are running…\033[0m\n"
 	@for svc in acore-postgres acore-redis acore-migrate acore-traefik acore-grafana; do \
 		status=$$(docker inspect -f '{{.State.Running}}' $$svc 2>/dev/null || echo false); \
@@ -17,13 +17,13 @@ ensure-infra:
 		fi; \
 	done
 
-reload-infra:
+infra-reload:
 	@printf "\033[35m*** Reloading infra services with new settings…\033[0m\n"
 	docker compose pull acore-postgres acore-redis acore-traefik acore-grafana
 	docker compose up -d --build --force-recreate acore-postgres acore-redis acore-traefik acore-grafana
 
-# Blue/Green deploy: ensure infra → start green → stop blue → rebuild blue → stop green → bring green back
-deploy: ensure-infra
+# Blue/Green deploy: ensure infra → start green → stop blue → rebuild blue → start blue → stop green
+deploy: infra-ensure
 	@printf "\033[35m*** Starting green (new version)…\033[0m\n"
 	docker compose up -d --build --no-deps acore-green
 
@@ -51,7 +51,7 @@ deploy: ensure-infra
 	@printf "\033[35m*** Done — no overlap, one container active at each step.\033[0m\n"
 
 
-migrate: ensure-infra migrate-schema migrate-func
+migrate: infra-ensure migrate-schema migrate-func
 	@printf "\033[32m*** All migrations complete! 🎉\033[0m\n"
 
 migrate-schema:
@@ -84,7 +84,7 @@ migrate-new:
 	touch "$$file"; \
 	printf "\033[32m*** Created %s\033[0m\n" "$$file"
 
-migrate-dropall: ensure-infra
+migrate-dropall: infra-ensure
 	@printf "\033[35m*** Resetting public schema…\033[0m\n"
 	docker compose exec -T acore-postgres \
 		psql -U ${PG_USER} -d ${PG_NAME} \
