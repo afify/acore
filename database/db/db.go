@@ -36,7 +36,6 @@ func CallFuncSingle[T any](cfg CallFuncParams) (*T, error) {
 
 	sql, finalArgs := buildQuery(cfg.FuncName, cfg.FuncArgs)
 
-	slog.Info("Executing query", slog.String("query", sql), slog.Any("args", finalArgs))
 	rows, err := pg.DB.Query(context.Background(), sql, finalArgs...)
 	if err != nil {
 		slog.Error("Query failed", slog.String("error", err.Error()))

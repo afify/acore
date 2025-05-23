@@ -1,0 +1,49 @@
+{{ template "header" . }}
+
+	<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+
+		<!-- Top navigation bar -->
+		<header class="bg-white dark:bg-gray-800 shadow">
+			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+				<div class="text-2xl font-bold">Zeerobot</div>
+				<nav class="space-x-4">
+					<a href="/signup"
+						class="px-3 py-2 rounded-md text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400">
+						Sign Up
+					</a>
+					<a href="/login"
+						class="px-3 py-2 rounded-md text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400">
+						Sign In
+					</a>
+				</nav>
+			</div>
+		</header>
+
+		<!-- Main content -->
+		<main class="flex items-center justify-center py-16 px-4">
+			<div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+				<h1 class="text-3xl font-semibold mb-4">Zeerobot</h1>
+				<!-- status line -->
+				<p class="text-gray-600 dark:text-gray-400 mb-8">
+				This is <strong class="text-blue-600 dark:text-blue-400">{{ .Container }}</strong> on commit
+				<code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{{ .Commit }}</code>
+				</p>
+
+				<!-- action buttons -->
+				<div class="flex gap-4">
+					<a href="/signup"
+						class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition">
+						Sign Up
+					</a>
+					<a href="/login"
+						class="flex-1 border-2 border-blue-600 hover:bg-blue-600 hover:text-white text-blue-600 font-medium py-2 rounded-lg transition">
+						Sign In
+					</a>
+				</div>
+			</div>
+		</main>
+
+	</body>
+</html>
+
+{{ template "footer" . }}

@@ -76,23 +76,28 @@ func SignUpForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	form.Password, _ = auth.HashPassword(form.Password)
-	userID, err := auth.CreateUser(form)
+	form.Password, err = auth.HashPassword(form.Password)
 	if err != nil {
 		slog.Error("SignUpForm failed", "error", err)
 		showSignUp(w, form, err.Error(), http.StatusConflict)
+		return
+	}
+
+	userID, err := auth.CreateUser(form)
+	if err != nil {
+		slog.Error("SignUpForm failed", "error", err)
+		showSignUp(w, form, "Error Creating User", http.StatusConflict)
 		return
 	}
 
 	err = session.CreateSession(w, r, userID)
 	if err != nil {
 		slog.Error("SignUpForm failed", "error", err)
-		showSignUp(w, form, err.Error(), http.StatusConflict)
+		showSignUp(w, form, "Session Error", http.StatusConflict)
 		return
 	}
 
 	http.Redirect(w, r, "/home", http.StatusSeeOther)
-	return
 }
 
 func SignInForm(w http.ResponseWriter, r *http.Request) {
@@ -117,5 +122,4 @@ func SignInForm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/home", http.StatusSeeOther)
-	return
 }

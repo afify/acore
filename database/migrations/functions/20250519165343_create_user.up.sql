@@ -26,7 +26,6 @@ BEGIN
 		id,
 		username,
 		email,
-		password_hash,
 		created_at,
 		updated_at
 	INTO new_user;

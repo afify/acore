@@ -1,15 +1,25 @@
 include .env
 
-COMMIT := $(shell git rev-parse --short HEAD)
-export COMMIT
-
-.PHONY: deploy infra-ensure infra-reload migrate migrate-new clean-all
+.PHONY: all lint infra-ensure infra-reload deploy migrate migrate-schema migrate-func migrate-new migrate-dropall clean-all
 
 all: deploy
 
+lint:
+	@printf "\033[36m*** go fmt…\033[0m\n"
+	@go fmt ./...
+	@printf "\033[36m*** go vet…\033[0m\n"
+	@go vet ./...
+	@printf "\033[36m*** staticcheck…\033[0m\n"
+	@staticcheck ./...
+	@printf "\033[36m*** govulncheck…\033[0m\n"
+	@govulncheck ./...
+	@printf "\033[36m*** gosec…\033[0m\n"
+	@gosec ./...
+	@printf "\033[32m*** Lint & security checks passed! 🎉\033[0m\n"
+
 infra-ensure:
 	@printf "\033[35m*** Ensuring infra services are running…\033[0m\n"
-	@for svc in acore-postgres acore-redis acore-migrate acore-traefik acore-grafana; do \
+	@for svc in ${APP_NAME}-postgres ${APP_NAME}-redis ${APP_NAME}-migrate ${APP_NAME}-traefik ${APP_NAME}-grafana; do \
 		status=$$(docker inspect -f '{{.State.Running}}' $$svc 2>/dev/null || echo false); \
 		if [ "$$status" != "true" ]; then \
 			printf "\033[33m*** Starting %s\033[0m\n" "$$svc"; \
@@ -19,51 +29,50 @@ infra-ensure:
 
 infra-reload:
 	@printf "\033[35m*** Reloading infra services with new settings…\033[0m\n"
-	docker compose pull acore-postgres acore-redis acore-traefik acore-grafana
-	docker compose up -d --build --force-recreate acore-postgres acore-redis acore-traefik acore-grafana
+	docker compose pull ${APP_NAME}-postgres ${APP_NAME}-redis ${APP_NAME}-traefik ${APP_NAME}-grafana
+	docker compose up -d --build --force-recreate ${APP_NAME}-postgres ${APP_NAME}-redis ${APP_NAME}-traefik ${APP_NAME}-grafana
 
 # Blue/Green deploy: ensure infra → start green → stop blue → rebuild blue → start blue → stop green
 deploy: infra-ensure
 	@printf "\033[35m*** Starting green (new version)…\033[0m\n"
-	docker compose up -d --build --no-deps acore-green
+	docker compose up -d --build --no-deps ${APP_NAME}-green
 
 	@printf "\033[35m*** Waiting for green to be healthy…\033[0m\n"
-	until [ "$$(docker inspect -f '{{.State.Health.Status}}' acore-green)" = "healthy" ]; do sleep 1; done
+	until [ "$$(docker inspect -f '{{.State.Health.Status}}' ${APP_NAME}-green)" = "healthy" ]; do sleep 1; done
 
 	@printf "\033[35m*** Stopping blue…\033[0m\n"
-	docker compose stop acore-blue
+	docker compose stop ${APP_NAME}-blue
 
 	@printf "\033[35m*** Building blue (new version)…\033[0m\n"
-	docker compose up -d --build --no-deps acore-blue
+	docker compose up -d --build --no-deps ${APP_NAME}-blue
 
 	@printf "\033[35m*** Starting blue…\033[0m\n"
-	docker compose start acore-blue
+	docker compose start ${APP_NAME}-blue
 
 	@printf "\033[35m*** Waiting for blue to be healthy…\033[0m\n"
-	until [ "$$(docker inspect -f '{{.State.Health.Status}}' acore-blue)" = "healthy" ]; do sleep 1; done
+	until [ "$$(docker inspect -f '{{.State.Health.Status}}' ${APP_NAME}-blue)" = "healthy" ]; do sleep 1; done
 
 	@printf "\033[35m*** Stopping green…\033[0m\n"
-	docker compose stop acore-green
+	docker compose stop ${APP_NAME}-green
 
 	@printf "\033[35m*** Building green for next cycle…\033[0m\n"
-	docker compose build acore-green
+	docker compose build ${APP_NAME}-green
 
 	@printf "\033[35m*** Done — no overlap, one container active at each step.\033[0m\n"
-
 
 migrate: infra-ensure migrate-schema migrate-func
 	@printf "\033[32m*** All migrations complete! 🎉\033[0m\n"
 
 migrate-schema:
 	@printf "\033[35m*** Running migrations…\033[0m\n"
-	docker compose run --rm acore-migrate \
+	docker compose run --rm ${APP_NAME}-migrate \
 		-path /migrations -database "${PG_URL}" up
 
 migrate-func:
 	@printf "\033[35m*** Applying SQL functions…\033[0m\n"
-	@for f in database/migrations/functions/*.sql; do \
+	@for f in backend/database/migrations/functions/*.sql; do \
 		printf "\033[33m*** Applying %s\033[0m\n" "$$f"; \
-		cat "$$f" | docker compose exec -T acore-postgres \
+		cat "$$f" | docker compose exec -T ${APP_NAME}-postgres \
 			psql -U ${PG_USER} -d ${PG_NAME} \
 			-v ON_ERROR_STOP=1; \
 	done
@@ -86,7 +95,7 @@ migrate-new:
 
 migrate-dropall: infra-ensure
 	@printf "\033[35m*** Resetting public schema…\033[0m\n"
-	docker compose exec -T acore-postgres \
+	docker compose exec -T ${APP_NAME}-postgres \
 		psql -U ${PG_USER} -d ${PG_NAME} \
 		-v ON_ERROR_STOP=1 \
 		-c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
@@ -97,3 +106,7 @@ clean-all:
 
 	@printf "\033[35m*** Pruning all containers, images, networks, volumes, and caches…\033[0m\n"
 	@docker system prune -af --volumes
+
+frontend:
+	@printf "\033[35m*** Building Frontend…\033[0m\n"
+	@cd frontend && npm run build

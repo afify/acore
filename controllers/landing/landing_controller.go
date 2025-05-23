@@ -13,13 +13,15 @@ type PageData struct {
 
 func HeartBeat(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "pong from "+os.Getenv("APP_NAME")+"["+os.Getenv("COMMIT")+"]\n")
+	commit := os.Getenv("COMMIT")
+	fmt.Fprintf(w, "Pong from %s\n", commit)
 }
 
 type LandingView struct {
 	Error     string
 	Container string
 	Commit    string
+	Title     string
 }
 
 func showLanding(w http.ResponseWriter, v LandingView, code int) {
@@ -38,6 +40,6 @@ func Home(w http.ResponseWriter, r *http.Request) {
 		Error:     "",
 		Container: container,
 		Commit:    commit,
+		Title:     "Acore",
 	}, http.StatusOK)
-
 }

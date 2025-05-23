@@ -1,10 +1,10 @@
-// render/render.go
 package render
 
 import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 )
 
@@ -19,22 +19,22 @@ type RenderRequest struct {
 var templates *template.Template
 
 func InitTemplates() {
-	const pattern = "templates/*/*.html"
+	const pattern = "views/*/*.html"
 
 	files, err := filepath.Glob(pattern)
 	if err != nil {
 		slog.Error("render.Init: glob failed", "pattern", pattern, "error", err)
-		return
+		os.Exit(1)
 	}
 	if len(files) == 0 {
 		slog.Error("render.Init: no template files found", "pattern", pattern)
-		return
+		os.Exit(1)
 	}
 
 	tmpl, err := template.ParseFiles(files...)
 	if err != nil {
 		slog.Error("render.Init: failed to parse templates", "error", err)
-		return
+		os.Exit(1)
 	}
 
 	templates = tmpl

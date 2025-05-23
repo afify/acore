@@ -2,5 +2,7 @@ acore
 main
 .DS_Store
 .env
-acore.log
 TODO.md
+*.log
+*.zip
+frontend/node_modules

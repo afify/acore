@@ -5,7 +5,6 @@ CREATE FUNCTION get_user_by_email(
 	id            UUID,
 	username      VARCHAR(50),
 	email         VARCHAR(100),
-	password_hash TEXT,
 	created_at    TIMESTAMP WITHOUT TIME ZONE,
 	updated_at    TIMESTAMP WITHOUT TIME ZONE
 )
@@ -14,7 +13,6 @@ SELECT
 	id,
 	username,
 	email,
-	password_hash,
 	created_at,
 	updated_at
 FROM users
