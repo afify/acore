@@ -1,127 +1,170 @@
+// in controllers/auth/auth_controller.go
 package auth
 
 import (
 	"log/slog"
 	"net/http"
 
-	auth "acore/models/auth"
-	session "acore/models/session"
+	authModel "acore/models/auth"
+	"acore/models/session"
+	"acore/models/validator"
 	"acore/render"
 )
 
-type SignUpView struct {
-	Form  auth.SignUpReq
-	Error string
-	Title string
+func Login(w http.ResponseWriter, r *http.Request) {
+	var title string = "Sign In"
+	var temp string = "signin.html"
+	var form authModel.SignInReq
+
+	switch r.Method {
+	case http.MethodGet:
+		render.ShowPage(w,
+			render.Page[authModel.SignInReq]{
+				Title:    title,
+				PageData: form,
+			},
+			temp, http.StatusOK,
+		)
+
+	case http.MethodPost:
+		errs, err := validator.BindAndValidate(r, &form)
+		if err != nil {
+			slog.Error("Validation failed", "error", err, "errors", errs)
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
+		if len(errs) > 0 {
+			slog.Error("Validation failed", "errors", errs)
+			render.ShowPage(w,
+				render.Page[authModel.SignInReq]{
+					Title:    title,
+					PageData: form,
+					Error:    errs["Password"],
+				},
+				temp, http.StatusUnprocessableEntity,
+			)
+			return
+		}
+
+		userID, err := authModel.Authenticate(form)
+		if err != nil {
+			slog.Error("Authenticate failed", "error", err)
+			render.ShowPage(w,
+				render.Page[authModel.SignInReq]{
+					Title:    title,
+					PageData: form,
+					Error:    "Wrong credentials"},
+				temp, http.StatusUnauthorized,
+			)
+			return
+		}
+		if err := session.CreateSession(w, r, userID); err != nil {
+			slog.Error("Session failed", "error", err)
+			render.ShowPage(w,
+				render.Page[authModel.SignInReq]{
+					Title:    title,
+					PageData: form,
+					Error:    "Could not create session"},
+				temp, http.StatusInternalServerError,
+			)
+			return
+		}
+		http.Redirect(w, r, "/home", http.StatusSeeOther)
+
+	default:
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
 }
 
-type SignInView struct {
-	Form  auth.SignInReq
-	Error string
-	Title string
-}
+func Signup(w http.ResponseWriter, r *http.Request) {
+	var title string = "Sign Up"
+	var temp string = "signup.html"
+	var form authModel.SignUpReq
 
-func bindSignUp(r *http.Request) (auth.SignUpReq, error) {
-	if err := r.ParseForm(); err != nil {
-		return auth.SignUpReq{}, err
+	switch r.Method {
+	case http.MethodGet:
+		render.ShowPage(w,
+			render.Page[authModel.SignUpReq]{
+				Title:    title,
+				PageData: form,
+			},
+			temp, http.StatusOK,
+		)
+
+	case http.MethodPost:
+		errs, err := validator.BindAndValidate(r, &form)
+		if err != nil {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
+		if len(errs) > 0 {
+			render.ShowPage(w,
+				render.Page[authModel.SignUpReq]{
+					Title:    title,
+					PageData: form,
+					Error:    errs["Email"],
+				},
+				temp, http.StatusUnprocessableEntity,
+			)
+			return
+		}
+
+		form.Password, err = authModel.HashPassword(form.Password)
+		if err != nil {
+			slog.Error("HashPassword failed", "error", err)
+			render.ShowPage(w,
+				render.Page[authModel.SignUpReq]{
+					Title:    title,
+					PageData: form,
+					Error:    err.Error(),
+				},
+				temp, http.StatusConflict,
+			)
+			return
+		}
+
+		u, err := authModel.CreateUser(form)
+		if err != nil {
+			slog.Error("CreateUser failed", "error", err)
+			render.ShowPage(w,
+				render.Page[authModel.SignUpReq]{
+					Title:    title,
+					PageData: form,
+					Error:    "Error creating user",
+				},
+				temp, http.StatusConflict,
+			)
+			return
+		}
+
+		if u == nil {
+			slog.Error("CreateUser failed", "error", err)
+			render.ShowPage(w,
+				render.Page[authModel.SignUpReq]{
+					Title:    title,
+					PageData: form,
+					Error:    "Error creating user",
+				},
+				temp, http.StatusConflict,
+			)
+			return
+		}
+
+		if err := session.CreateSession(w, r, u.ID); err != nil {
+			slog.Error("Session failed", "error", err)
+			render.ShowPage(w,
+				render.Page[authModel.SignUpReq]{
+					Title:    title,
+					PageData: form,
+					Error:    "Session error",
+				},
+				temp, http.StatusConflict,
+			)
+			return
+		}
+		http.Redirect(w, r, "/home", http.StatusSeeOther)
+
+	default:
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}
-	req := auth.SignUpReq{
-		UserName: r.FormValue("username"),
-		Email:    r.FormValue("email"),
-		Password: r.FormValue("password"),
-	}
-	return req, nil
-}
-
-func bindSignIn(r *http.Request) (auth.SignInReq, error) {
-	if err := r.ParseForm(); err != nil {
-		return auth.SignInReq{}, err
-	}
-	return auth.SignInReq{
-		EmailUsername: r.FormValue("email-username"),
-		Password:      r.FormValue("password"),
-	}, nil
-}
-
-func showSignUp(w http.ResponseWriter, form auth.SignUpReq, msg string, code int) {
-	render.Render(render.RenderRequest{
-		Writer:     w,
-		Template:   "signup.html",
-		Data:       SignUpView{Title: "SignUp", Form: form, Error: msg},
-		Headers:    nil,
-		StatusCode: code,
-	})
-}
-
-func showSignIn(w http.ResponseWriter, form auth.SignInReq, msg string, code int) {
-	render.Render(render.RenderRequest{
-		Writer:     w,
-		Template:   "signin.html",
-		Data:       SignInView{Title: "SignIn", Form: form, Error: msg},
-		Headers:    nil,
-		StatusCode: code,
-	})
-}
-
-func SignUpPage(w http.ResponseWriter, r *http.Request) {
-	showSignUp(w, auth.SignUpReq{}, "", http.StatusOK)
-}
-
-func SignInPage(w http.ResponseWriter, r *http.Request) {
-	showSignIn(w, auth.SignInReq{}, "", http.StatusOK)
-}
-
-func SignUpForm(w http.ResponseWriter, r *http.Request) {
-	form, err := bindSignUp(r)
-	if err != nil {
-		showSignUp(w, form, "Invalid form submission", http.StatusBadRequest)
-		return
-	}
-
-	form.Password, err = auth.HashPassword(form.Password)
-	if err != nil {
-		slog.Error("SignUpForm failed", "error", err)
-		showSignUp(w, form, err.Error(), http.StatusConflict)
-		return
-	}
-
-	userID, err := auth.CreateUser(form)
-	if err != nil {
-		slog.Error("SignUpForm failed", "error", err)
-		showSignUp(w, form, "Error Creating User", http.StatusConflict)
-		return
-	}
-
-	err = session.CreateSession(w, r, userID)
-	if err != nil {
-		slog.Error("SignUpForm failed", "error", err)
-		showSignUp(w, form, "Session Error", http.StatusConflict)
-		return
-	}
-
-	http.Redirect(w, r, "/home", http.StatusSeeOther)
-}
-
-func SignInForm(w http.ResponseWriter, r *http.Request) {
-	form, err := bindSignIn(r)
-	if err != nil {
-		slog.Error("SignInForm failed", "error", err)
-		showSignIn(w, form, "Invalid form submission", http.StatusBadRequest)
-		return
-	}
-
-	userID, err := auth.Authenticate(form)
-	if err != nil {
-		slog.Error("SignInForm Authenticate failed", "error", err)
-		showSignIn(w, form, "Wrong email/username or password", http.StatusUnauthorized)
-		return
-	}
-
-	if err := session.CreateSession(w, r, userID); err != nil {
-		slog.Error("SignInForm Session failed", "error", err)
-		showSignIn(w, form, "Could not create session", http.StatusInternalServerError)
-		return
-	}
-
-	http.Redirect(w, r, "/home", http.StatusSeeOther)
 }

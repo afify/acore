@@ -12,23 +12,14 @@ import (
 )
 
 type SignUpReq struct {
-	UserName string `form:"username"   binding:"required"`
-	Email    string `form:"email"      binding:"required"`
-	Password string `form:"password"   binding:"required"`
-}
-
-type ChangePassReq struct {
-	Password        string `form:"password"         binding:"required"`
-	ConfirmPassword string `form:"confirm-password" binding:"required"`
+	UserName string `form:"username" validate:"required,alphanum",max=50`
+	Email    string `form:"email"    validate:"required,email",max=50`
+	Password string `form:"password" validate:"required,min=8",max=50`
 }
 
 type SignInReq struct {
-	EmailUsername string `form:"email-username" binding:"required"`
-	Password      string `form:"password"       binding:"required"`
-}
-
-type ForgetReq struct {
-	Email string `form:"email"      binding:"required"`
+	EmailUsername string `form:"email-username" validate:"required"`
+	Password      string `form:"password"       validate:"required,min=8"`
 }
 
 type userCred struct {
@@ -48,18 +39,18 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
-func CreateUser(form SignUpReq) (uuid.UUID, error) {
+func CreateUser(form SignUpReq) (*user.User, error) {
 	u, err := db.CallFuncSingle[user.User](db.CallFuncParams{
 		FuncName: "create_user",
 		FuncArgs: []interface{}{form.UserName, form.Email, form.Password},
 	})
 	if err != nil {
 		slog.Error("Create User failed", "error", err)
-		return uuid.Nil, fmt.Errorf("User.Create: %w", err)
+		return nil, fmt.Errorf("User.Create: %w", err)
 	}
 
 	slog.Info("Create User", "user", u)
-	return u.ID, nil
+	return u, nil
 }
 
 func Authenticate(form SignInReq) (uuid.UUID, error) {

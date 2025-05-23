@@ -16,6 +16,12 @@ type RenderRequest struct {
 	StatusCode int
 }
 
+type Page[T any] struct {
+	Title    string
+	Error    string
+	PageData T
+}
+
 var templates *template.Template
 
 func InitTemplates() {
@@ -57,4 +63,13 @@ func Render(req RenderRequest) {
 			"Template rendering error: "+err.Error(),
 			http.StatusInternalServerError)
 	}
+}
+
+func ShowPage[T any](w http.ResponseWriter, pageData Page[T], tmpl string, code int) {
+	Render(RenderRequest{
+		Writer:     w,
+		Template:   tmpl,
+		Data:       pageData,
+		StatusCode: code,
+	})
 }

@@ -10,12 +10,11 @@ import (
 )
 
 type User struct {
-	ID           uuid.UUID `db:"id"`
-	Username     string    `db:"username"`
-	Email        string    `db:"email"`
-	PasswordHash string    `db:"password_hash"`
-	CreatedAt    time.Time `db:"created_at"`
-	UpdatedAt    time.Time `db:"updated_at"`
+	ID        uuid.UUID `db:"id"`
+	Username  string    `db:"username"`
+	Email     string    `db:"email"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 }
 
 func GetByEmail(email string) (*User, error) {

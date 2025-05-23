@@ -73,7 +73,7 @@ migrate-schema:
 
 migrate-func:
 	@printf "\033[35m*** Applying SQL functions…\033[0m\n"
-	@for f in backend/database/migrations/functions/*.sql; do \
+	@for f in database/migrations/functions/*.sql; do \
 		printf "\033[33m*** Applying %s\033[0m\n" "$$f"; \
 		cat "$$f" | docker compose exec -T ${APP_NAME}-postgres \
 			psql -U ${PG_USER} -d ${PG_NAME} \
