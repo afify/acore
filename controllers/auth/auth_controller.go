@@ -12,11 +12,13 @@ import (
 type SignUpView struct {
 	Form  auth.SignUpReq
 	Error string
+	Title string
 }
 
 type SignInView struct {
 	Form  auth.SignInReq
 	Error string
+	Title string
 }
 
 func bindSignUp(r *http.Request) (auth.SignUpReq, error) {
@@ -45,7 +47,7 @@ func showSignUp(w http.ResponseWriter, form auth.SignUpReq, msg string, code int
 	render.Render(render.RenderRequest{
 		Writer:     w,
 		Template:   "signup.html",
-		Data:       SignUpView{Form: form, Error: msg},
+		Data:       SignUpView{Title: "SignUp", Form: form, Error: msg},
 		Headers:    nil,
 		StatusCode: code,
 	})
@@ -55,7 +57,7 @@ func showSignIn(w http.ResponseWriter, form auth.SignInReq, msg string, code int
 	render.Render(render.RenderRequest{
 		Writer:     w,
 		Template:   "signin.html",
-		Data:       SignInView{Form: form, Error: msg},
+		Data:       SignInView{Title: "SignIn", Form: form, Error: msg},
 		Headers:    nil,
 		StatusCode: code,
 	})

@@ -1,6 +1,9 @@
 include .env
 
-.PHONY: all lint infra-ensure infra-reload deploy migrate migrate-schema migrate-func migrate-new migrate-dropall clean-all
+COMMIT=$(shell git rev-parse --short HEAD)
+export COMMIT
+
+.PHONY: all lint infra-ensure infra-reload deploy migrate migrate-schema migrate-func migrate-new migrate-dropall clean-all frontend
 
 all: deploy
 
@@ -107,6 +110,6 @@ clean-all:
 	@printf "\033[35m*** Pruning all containers, images, networks, volumes, and caches…\033[0m\n"
 	@docker system prune -af --volumes
 
-frontend:
+fe:
 	@printf "\033[35m*** Building Frontend…\033[0m\n"
-	@cd frontend && npm run build
+	@cd views && tailwindcss -i ./input.css -o ./static/css/main.css --minify
