@@ -3,7 +3,7 @@ include .env
 COMMIT=$(shell git rev-parse --short HEAD)
 export COMMIT
 
-.PHONY: all lint infra-ensure infra-reload deploy migrate migrate-schema migrate-func migrate-new migrate-dropall clean-all frontend
+.PHONY: all lint infra-ensure infra-reload deploy migrate migrate-schema migrate-func migrate-new migrate-dropall clean-all frontend blue
 
 all: deploy
 
@@ -112,4 +112,11 @@ clean-all:
 
 fe:
 	@printf "\033[35m*** Building Frontend…\033[0m\n"
+	@printf "\033[36m*** Building CSS…\033[0m\n"
 	@cd views && tailwindcss -i ./input.css -o ./static/css/main.css --minify
+	@printf "\033[36m*** Building JS…\033[0m\n"
+	@cd views/vue && yarn build
+
+b: fe
+	@printf "\033[35m*** Rebuilding blue only…\033[0m\n"
+	docker compose up -d --build --no-deps ${APP_NAME}-blue

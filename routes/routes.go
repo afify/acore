@@ -12,9 +12,10 @@ import (
 func SetupRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	// 1) Static assets (CSS, JS, images)
 	mux.Handle("/static/",
-		http.StripPrefix("/static/", http.FileServer(http.Dir("views/static"))),
+		http.StripPrefix("/static/",
+			http.FileServer(http.Dir("views/static")),
+		),
 	)
 
 	mux.HandleFunc("/", landing.Home)

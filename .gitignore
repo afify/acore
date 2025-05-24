@@ -5,4 +5,4 @@ main
 TODO.md
 *.log
 *.zip
-frontend/node_modules
+views/vue/node_modules

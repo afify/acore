@@ -1,0 +1,15 @@
+{
+	"name": "vue",
+	"version": "1.0.0",
+	"scripts": {
+		"build": "vite build"
+	},
+	"license": "MIT",
+	"devDependencies": {
+		"@headlessui/vue": "^1.7.23",
+		"@heroicons/vue": "^2.2.0",
+		"@vitejs/plugin-vue": "^5.2.4",
+		"vite": "^6.3.5",
+		"vue": "3"
+	}
+}

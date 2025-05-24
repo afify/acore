@@ -1,27 +1,4 @@
 {{ template "header" . }}
-	{{ template "top_nav" . }}
-		<!-- Main content -->
-		<main class="flex items-center justify-center py-16 px-4">
-			<div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
-
-				<h1 class="text-3xl font-semibold mb-4">Zeerobot</h1>
-
-				<p class="text-gray-600 dark:text-gray-400 mb-8">
-				This is <strong class="text-blue-600 dark:text-blue-400">{{ .Container }}</strong> on commit
-				<code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{{ .Commit }}</code>
-				</p>
-
-				<div class="flex gap-4">
-					<a href="/signup"
-						class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition">
-						Sign Up
-					</a>
-					<a href="/login"
-						class="flex-1 border-2 border-blue-600 hover:bg-blue-600 hover:text-white text-blue-600 font-medium py-2 rounded-lg transition">
-						Sign In
-					</a>
-				</div>
-
-			</div>
-		</main>
+<main id="app"></main>
 {{ template "footer" . }}
+<script type="module" src="/static/js/index.js"></script>
