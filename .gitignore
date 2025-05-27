@@ -1,0 +1,8 @@
+acore
+main
+.DS_Store
+.env
+TODO.md
+*.log
+*.zip
+views/vue/node_modules
