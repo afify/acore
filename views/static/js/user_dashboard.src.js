@@ -2,6 +2,7 @@
 				// Data
 				const navigation = [
 					{ name: 'Home', href: '/home', icon: 'FolderIcon', current: false },
+					{ name: 'Services', href: '/services', icon: 'FolderIcon', current: false },
 					{ name: 'Settings', href: '/settings', icon: 'Cog6ToothIcon', current: true },
 				];
 				const teams = [
@@ -10,11 +11,11 @@
 					{ id: 3, name: 'Tailwind Labs', href: '#', initial: 'T', current: false },
 				];
 				const secondaryNavigation = [
-					{ name: 'Account', href: '#', current: true },
-					{ name: 'Security', href: '#', current: false },
-					{ name: 'Integrations', href: '#', current: false },
-					{ name: 'Billing', href: '#', current: false },
-					{ name: 'Notifications', href: '#', current: false },
+					{ name: 'Account', href: '/settings', current: true },
+					{ name: 'Security', href: '/security', current: false },
+					{ name: 'Integrations', href: '/integrations', current: false },
+					{ name: 'Billing', href: '/billing', current: false },
+					{ name: 'Notifications', href: '/notifications', current: false },
 				];
 
 				// State (using a simple object to manage sidebar visibility)
