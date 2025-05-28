@@ -62,7 +62,8 @@ deploy: infra-ensure
 
 	@printf "\033[35m*** Clean docker cache.\033[0m\n"
 	docker builder prune --all --force
-	docker system prune --force
+	docker system prune -a --volumes -f
+
 
 migrate: infra-ensure init-db migrate-func
 	@printf "\033[32m*** All migrations complete! 🎉\033[0m\n"
