@@ -32,8 +32,6 @@ x-app-default: &app-default
     timeout: 3s
     retries: 3
     start_period: 5s
-  networks:
-    - acore_net
 
 services:
   acore-postgres:
@@ -55,8 +53,6 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
-    networks:
-      - acore_net
 
   acore-redis:
     image: redis:alpine
@@ -73,8 +69,6 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
-    networks:
-      - acore_net
 
   acore-blue:
     <<: *app-default
@@ -113,8 +107,6 @@ services:
         condition: service_healthy
       acore-postgres:
         condition: service_healthy
-    networks:
-      - acore_net
 
   acore-grafana:
     image: grafana/grafana:latest
@@ -138,8 +130,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-    networks:
-      - acore_net
 
   acore-migrate:
     image: migrate/migrate:latest
@@ -165,8 +155,6 @@ services:
       timeout: 3s
       retries: 3
       start_period: 10s
-    networks:
-      - acore_net
     restart: "no"
 
 volumes:
@@ -174,8 +162,3 @@ volumes:
   redis_data:
   grafana_data:
   acme:
-
-networks:
-  acore_net:
-    name: acore_net
-    driver: bridge
