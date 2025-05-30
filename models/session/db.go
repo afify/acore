@@ -14,7 +14,7 @@ type SessionID struct {
 func dbGetUserSessionByID(userID uuid.UUID, token string) (uuid.UUID, error) {
 	sessionID, err := db.CallFuncSingle[SessionID](db.CallFuncParams{
 		FuncName: "get_user_session_by_id",
-		FuncArgs: []interface{}{userID, token},
+		FuncArgs: []any{userID, token},
 	})
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("dbCreateUserSessionByID: %w", err)
@@ -25,7 +25,7 @@ func dbGetUserSessionByID(userID uuid.UUID, token string) (uuid.UUID, error) {
 func dbCreateUserSession(p SessionParams) (*Session, error) {
 	out, err := db.CallFuncSingle[Session](db.CallFuncParams{
 		FuncName: "create_user_session",
-		FuncArgs: []interface{}{
+		FuncArgs: []any{
 			p.UserID,
 			int16(p.Type),
 			int16(p.Provider),

@@ -1,10 +1,13 @@
 include .env
 
-.PHONY: all lint infra-ensure infra-reload deploy migrate migrate-schema migrate-func migrate-new migrate-dropall clean-all frontend b migrate-clean
+COMMIT := $(shell git rev-parse --short HEAD)
+export COMMIT
+
+.PHONY: all check infra-ensure infra-reload deploy migrate migrate-schema migrate-func migrate-new migrate-dropall clean-all frontend b migrate-clean
 
 all: deploy
 
-lint:
+check:
 	@printf "\033[36m*** go fmt…\033[0m\n"
 	@go fmt ./...
 	@printf "\033[36m*** go update…\033[0m\n"
@@ -61,8 +64,18 @@ deploy: infra-ensure
 	docker compose build ${APP_NAME}-green
 
 	@printf "\033[35m*** Clean docker cache.\033[0m\n"
+	@printf "\033[35m*** Clean 💙/💚 builder cache…\033[0m\n"
 	docker builder prune --all --force
-	docker system prune -a --volumes -f
+
+	@printf "\033[35m*** Prune dangling images (keep acore-blue & acore-green)…\033[0m\n"
+	docker image prune --filter "dangling=true" --force
+
+	@printf "\033[35m*** Prune unused volumes…\033[0m\n"
+	docker volume prune --force
+
+	@printf "\033[35m*** Prune unused networks…\033[0m\n"
+	docker network prune --force
+	docker system df
 
 
 migrate: infra-ensure init-db migrate-func

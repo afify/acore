@@ -13,41 +13,33 @@ import (
 
 type CallFuncParams struct {
 	FuncName string
-	FuncArgs []interface{}
+	FuncArgs []any
 }
 
-func buildQuery(fnName string, args []interface{}) (string, []interface{}) {
+func buildQuery(fnName string, args []any) (string, []any) {
 	placeholders := make([]string, len(args))
 	for i := range args {
 		placeholders[i] = fmt.Sprintf("$%d", i+1)
 	}
 
-	sql := fmt.Sprintf("SELECT * FROM %s(%s)",
-		fnName,
-		strings.Join(placeholders, ","),
-	)
+	sql := fmt.Sprintf("SELECT * FROM %s(%s)", fnName, strings.Join(placeholders, ","))
 
 	slog.Info("buildQuery", slog.String("query", sql), slog.Any("args", args))
 	return sql, args
 }
 
 func CallFuncSingle[T any](cfg CallFuncParams) (*T, error) {
-	slog.Info("CallFuncSingle started", slog.String("function", cfg.FuncName))
+	sql, args := buildQuery(cfg.FuncName, cfg.FuncArgs)
 
-	sql, finalArgs := buildQuery(cfg.FuncName, cfg.FuncArgs)
-
-	rows, err := pg.DB.Query(context.Background(), sql, finalArgs...)
+	row, err := pg.DB.Query(context.Background(), sql, args...)
 	if err != nil {
-		slog.Error("Query failed", slog.String("error", err.Error()))
 		return nil, err
 	}
-	defer rows.Close()
+	defer row.Close()
 
-	item, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[T])
+	item, err := pgx.CollectOneRow(row, pgx.RowToStructByName[T])
 	if err != nil {
-		slog.Error("Row collection failed", slog.String("error", err.Error()))
 		return nil, err
 	}
-	slog.Info("CallFuncSingle completed")
 	return &item, nil
 }

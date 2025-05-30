@@ -12,7 +12,7 @@ var templates *template.Template
 type RenderRequest struct {
 	Writer     http.ResponseWriter
 	Template   string
-	Data       interface{}
+	Data       any
 	Headers    http.Header
 	StatusCode int
 }
@@ -48,8 +48,12 @@ func Render(req RenderRequest) {
 		return
 	}
 
-	w.WriteHeader(req.StatusCode)
-	buf.WriteTo(w)
+	if req.StatusCode != http.StatusOK {
+		w.WriteHeader(req.StatusCode)
+	}
+	if _, err := buf.WriteTo(w); err != nil {
+		slog.Error("Render: writing response failed", "error", err)
+	}
 }
 
 func ShowPage[T any](w http.ResponseWriter, pageData Page[T], tmpl string, code int) {

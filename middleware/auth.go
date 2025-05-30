@@ -31,7 +31,7 @@ func AuthRequired(next http.Handler) http.Handler {
 			return
 		}
 
-		session.SetSessionCookieStrict(w,
+		session.SetSessionCookie(w,
 			session.SessionCookieName,
 			c.Value,
 			session.DefaultExpiry(),

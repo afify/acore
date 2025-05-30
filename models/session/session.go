@@ -92,12 +92,7 @@ func CreateSession(w http.ResponseWriter, r *http.Request, userID uuid.UUID, st 
 		return fmt.Errorf("CreateSession: %w", err)
 	}
 
-	// Oauth require SameSite = None
-	if provider == auth.AuthProviderEmail {
-		SetSessionCookieStrict(w, SessionCookieName, sess.Token, sess.ExpiresAt)
-	} else {
-		SetSessionCookieOauth(w, SessionCookieName, sess.Token, sess.ExpiresAt)
-	}
+	SetSessionCookie(w, SessionCookieName, sess.Token, sess.ExpiresAt)
 
 	slog.Info("NewSession", "session", sess)
 	return nil

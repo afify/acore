@@ -1,7 +1,6 @@
 package session
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"strings"
@@ -26,12 +25,7 @@ func ValidateSessionToken(token string) (uuid.UUID, uuid.UUID, error) {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("ValidateSessionToken: no token passed")
 	}
 
-	ct, err := base64.URLEncoding.DecodeString(token)
-	if err != nil {
-		return uuid.Nil, uuid.Nil, fmt.Errorf("ValidateSessionToken: invalid base64: %w", err)
-	}
-
-	plain, err := decryptString(ct)
+	plain, err := decryptString(token)
 	if err != nil {
 		return uuid.Nil, uuid.Nil, err
 	}

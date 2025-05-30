@@ -1,6 +1,7 @@
 package session
 
 import (
+	"acore/models/auth"
 	"log/slog"
 	"net/http"
 	"time"
@@ -24,7 +25,7 @@ func SetSessionCookieStrict(w http.ResponseWriter, cookieName, token string, exp
 	})
 }
 
-func SetSessionCookieOauth(w http.ResponseWriter, cookieName, token string, expires time.Time) {
+func SetSessionCookie(w http.ResponseWriter, cookieName, token string, expires time.Time) {
 	slog.Info("setting session cookie",
 		"name", cookieName,
 		"token", token,
@@ -52,4 +53,9 @@ func ClearSessionCookie(w http.ResponseWriter, cookieName string) {
 		HttpOnly: true,
 		Secure:   true,
 	})
+}
+
+func ClearSessionCookies(w http.ResponseWriter) {
+	ClearSessionCookie(w, SessionCookieName)
+	ClearSessionCookie(w, auth.OauthStateCookieName)
 }

@@ -124,7 +124,7 @@ func findOrCreateUser(ui *userInfo) (uuid.UUID, error) {
 		if errors.Is(err, sql.ErrNoRows) {
 			slog.Info("No existing provider link, creating user")
 
-			u, err := authModel.CreateUser(authModel.SignUpReq{
+			u, err := authModel.CreateUser(authModel.SignupReq{
 				UserName: ui.Email,
 				Email:    ui.Email,
 				Password: "", // no password for OAuth users

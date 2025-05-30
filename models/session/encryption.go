@@ -1,14 +1,14 @@
 package session
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
 	"math/big"
-
-	"golang.org/x/crypto/chacha20poly1305"
 )
 
 func randomString(length int) (string, error) {
@@ -32,37 +32,57 @@ func encryptString(plain string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	aead, err := chacha20poly1305.NewX(key)
-	if err != nil {
-		return "", fmt.Errorf("chacha20poly1305.NewX: %w", err)
+	if len(key) != 32 {
+		return "", fmt.Errorf("encryptString: session key is %d bytes (want 32)", len(key))
 	}
 
-	nonce := make([]byte, chacha20poly1305.NonceSizeX)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", fmt.Errorf("aes.NewCipher: %w", err)
+	}
+
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", fmt.Errorf("cipher.NewGCM: %w", err)
+	}
+
+	nonce := make([]byte, aead.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		return "", fmt.Errorf("nonce read: %w", err)
 	}
 
-	ct := aead.Seal(nonce, nonce, []byte(plain), nil)
-	return base64.URLEncoding.EncodeToString(ct), nil
+	ciphertext := aead.Seal(nonce, nonce, []byte(plain), nil)
+	return base64.URLEncoding.EncodeToString(ciphertext), nil
 }
 
-func decryptString(ct []byte) ([]byte, error) {
+func decryptString(enc string) ([]byte, error) {
+	data, err := base64.URLEncoding.DecodeString(enc)
+	if err != nil {
+		return nil, fmt.Errorf("base64 decode: %w", err)
+	}
+
 	key, err := getSessionKey()
 	if err != nil {
 		return nil, err
 	}
-
-	aead, err := chacha20poly1305.NewX(key)
-	if err != nil {
-		return nil, fmt.Errorf("decryptString: NewX: %w", err)
+	if len(key) != 32 {
+		return nil, fmt.Errorf("decryptString: session key is %d bytes (want 32)", len(key))
 	}
 
-	nonceSize := chacha20poly1305.NonceSizeX
-	if len(ct) < nonceSize {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("aes.NewCipher: %w", err)
+	}
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("cipher.NewGCM: %w", err)
+	}
+
+	nonceSize := aead.NonceSize()
+	if len(data) < nonceSize {
 		return nil, errors.New("decryptString: ciphertext too short")
 	}
-	nonce, ciphertext := ct[:nonceSize], ct[nonceSize:]
+	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
 
 	plain, err := aead.Open(nil, nonce, ciphertext, nil)
 	if err != nil {

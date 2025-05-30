@@ -3,7 +3,6 @@ package auth
 import (
 	"acore/database/db"
 	"acore/models/user"
-	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -17,24 +16,24 @@ type providerLink struct {
 	UserID uuid.UUID `db:"user_id"`
 }
 
-func dbCreateUser(form SignUpReq) (*user.User, error) {
+func dbCreateUser(form SignupReq) (*user.User, error) {
 	u, err := db.CallFuncSingle[user.User](db.CallFuncParams{
 		FuncName: "create_user",
-		FuncArgs: []interface{}{form.UserName, form.Email, form.Password},
+		FuncArgs: []any{form.UserName, form.Email, form.Password},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("dbCreateUser: %w", err)
+		return nil, err
 	}
 	return u, nil
 }
 
-func dbGetUserPassword(form SignInReq) (*userCred, error) {
+func dbGetUserPassword(form LoginReq) (*userCred, error) {
 	u, err := db.CallFuncSingle[userCred](db.CallFuncParams{
 		FuncName: "get_user_password_hash",
-		FuncArgs: []interface{}{form.EmailUsername},
+		FuncArgs: []any{form.EmailUsername},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("dbCreateUser: %w", err)
+		return nil, err
 	}
 	return u, nil
 }
@@ -42,7 +41,7 @@ func dbGetUserPassword(form SignInReq) (*userCred, error) {
 func dbGetUserByProvider(provider AuthProvider, sub string) (uuid.UUID, error) {
 	pl, err := db.CallFuncSingle[providerLink](db.CallFuncParams{
 		FuncName: "get_user_by_provider",
-		FuncArgs: []interface{}{int(provider), sub},
+		FuncArgs: []any{int(provider), sub},
 	})
 	if err != nil {
 		return uuid.Nil, err
@@ -53,10 +52,10 @@ func dbGetUserByProvider(provider AuthProvider, sub string) (uuid.UUID, error) {
 func dbCreateUserProvider(userID uuid.UUID, provider AuthProvider, sub string) error {
 	_, err := db.CallFuncSingle[providerLink](db.CallFuncParams{
 		FuncName: "create_user_provider",
-		FuncArgs: []interface{}{userID, int(provider), sub},
+		FuncArgs: []any{userID, int(provider), sub},
 	})
 	if err != nil {
-		return fmt.Errorf("LinkProvider: %w", err)
+		return err
 	}
 	return nil
 }

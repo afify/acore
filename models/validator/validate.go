@@ -13,11 +13,7 @@ var (
 	validate    = validator.New()
 )
 
-// BindAndValidate parses r.PostForm into dst (a pointer to struct),
-// runs validator.Struct on it, and returns any field errors.
-// If parsing/decoding fails, err will be non-nil.
-// If validation fails, errs maps Go field names to messages.
-func BindAndValidate(r *http.Request, dst interface{}) (errs map[string]string, err error) {
+func bindAndValidate(r *http.Request, dst any) (errs map[string]string, err error) {
 	if err = r.ParseForm(); err != nil {
 		return nil, err
 	}
@@ -31,4 +27,10 @@ func BindAndValidate(r *http.Request, dst interface{}) (errs map[string]string, 
 		}
 	}
 	return errs, nil
+}
+
+func BindAndValidateForm[T any](r *http.Request) (T, map[string]string, error) {
+	var form T
+	errs, err := bindAndValidate(r, &form)
+	return form, errs, err
 }
