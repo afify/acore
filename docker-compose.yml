@@ -27,7 +27,7 @@ x-app-default: &app-default
     - "traefik.http.services.${APP_NAME}.loadbalancer.server.port=${APP_CONTAINER_PORT}"
     - "traefik.http.services.${APP_NAME}.loadbalancer.healthcheck.path=${APP_HEALTHCHECK_PATH}"
   healthcheck:
-    test: ["CMD", "nc", "-z", "localhost", "${APP_CONTAINER_PORT}"]
+    test: ["CMD", "wget", "--no-verbose", "--spider", "http://localhost:${APP_CONTAINER_PORT}/ping"]
     interval: ${APP_HEALTHCHECK_INTERVAL}
     timeout: 3s
     retries: 3
